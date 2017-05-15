@@ -1,0 +1,844 @@
+// Freak Fortress 2
+// ================
+//
+// The Blitzkrieg
+// A.K.A: Danmaku Medic, Barrage Doctor
+//
+// Special thanks to:
+//	-Ravensbro for the new model!
+//	-_Maximilian for the soldier-rigged version of the model!
+//	-M76030 for German translations, and pointing out bugs
+//	-otokiru for Japanese translations
+//  -jjh0107_ww2k for Korean translations
+//  -Kah! for Swedish translations
+// 
+// Difficulty: Medium to Extreme (depending on setting)
+
+"character"
+{
+	"name"					"The Blitzkrieg"
+	"class"					"5"	
+	
+	"subversion"			"31" // BBG-specific, not applicable on public FF2 versions.
+	"bossteam"				"0"	 // BBG-specific, not applicable on public FF2 versions.
+
+	"model"					"models/freak_fortress_2/shadow93/dmedic/d_medic.mdl"
+
+	"health_formula"		"((((450+n)*(n-1))^1.04)+5120)/5" 	// 1.10.6 formula
+	//"health_formula"		"((((450+n)*n)^1.04)+5120)/5"		// 1.10.5 and legacy formula
+	
+	"lives"				"5"
+	"ragedamage"		"2500"
+	
+	"description_en" "The Blitzkrieg:\n''Ze healing is not as revarding as ze hurting!''\n \nAbilities:\n \nBrave Jump:\nAlt-fire, look up and release to activate.\n \nWeightdown:\nLook down and crouch mid-air to activate.\n \nMini-Blitzkrieg (Crits+Rocket Launcher):\nTaunt or Call Medic to activate\n \nBlitzkrieg Barrage (Crits+Uber+Rage Launcher):\nActivates upon losing a life\n \nTeleport:\nAim and press Alt-fire to use a skill.\n \nParachute:\nPress Space while mid-air to deploy!\n \nBETA 3.3 - 12/31/2015" 
+	"description_es" "El Blitzkrieg:\n''¡Curar no es tan gratificante como dañar!''\n \nAbilidades:\n \nSuper Salto:\nPresione el botón secundario, mira hacia arriba, y suelta para activar\n \nWeightdown:\nEn el aire, agachéte y mira hacia abajo para activar.\n \nMini-Blitzkrieg(Criticos+Lanzacohetes)\nHaz burla o llama un medico para activar.\n \nBlitzkrieg (Criticos+Supercarga+Lanzacohetes):\n¡Se activa cuando pierdes una vida!\n \nTeleportacion:\nApunta y presione el boton secundario para usar!\n \nParacaídas:\nEn el aire, presione espacio para usar!\n \nBETA 3.3 - 31/12/2015"	
+	"description_ru" "Блитцкриг:\n''Лечить не так приятно, как убивать!''\n \nСпособности:\n \nВысокий прыжок:\nАльт-атака, смотри вверх, затем отпусти.\n \nПринудительное приземление:\nСмотри вниз и пригнись в воздухе.\n \nМиниблитцкриг (Crits+Rocket Launcher):\nTaunt or Call Medic to activate\n \nBlitzkrieg Barrage (Криты+ракетомет):\nАктивируется после потери жизни\n \nТелепорт:\nНаведись и нажми альт-атаку.\n \nПарашют:\nДля активации нажми пробел в воздухе!\n \nБета 3.3 - 31/12/2015" 
+	"description_ko" "탄막 의사양반:\n''죽이는 것보다 츼료가 더 보람촤지!''\n \n능력들:\n \nBrave Jump:\n마우스 우클릭, 위를 쳐다보고 마우스를 떼서 점프하세요.\n \nWeightdown:\n아래를 보고 공중에서 앉아서 급강하세요.\n \n미니-블리츠크리크 (크리 로켓런처):\n도발 또는 E키를 눌러서 사용하세요\n \n블리츠크리크 배라지 (크리+우버+로켓):\n목숨을 잃었을 때 발동됩니다\n \n텔레포트:\n조준하고 마우스 우클릭을 눌러 사용하세요.\n \n낙하산:\n공중에 있을 때 스페이스 바를 눌러 사용하세요!\n \nBETA 3.3 - 2015/12/31" 
+	"description_jp" "弾幕ドクター:\n''あの治うことは殺す事より楽しくねーよ!''\n \能力:\n \n勇敢のジャンプ方: 第二の撃ちボタン、上に見ると、ボタンを押すな\n \nすぐに降り方: 早速に下に見ながら蹲って\n \nMini-Blitzkrieg (Crits+Rocket Launcher):\n愚弄や医者ボタン\n \nBlitzkrieg Barrage (Crits+Uber+Rage Launcher):\n命をなくすと、できます\n \n場所から消える魔法方: 狙いながら第二撃ちボタン\n \nパラシュート：空中の間に居ながらスペースバーしろ\n \nBETA 3.3 - 2015/12/31" 
+	"description_de" "Der Blitzkrieg:\n''Das Heilen ist nicht so lohnend wie das verletzen!''\n \nFähigkeiten:\n \nBrave Jump:\nRechtsklick, hoch gucken and loslassen zum aktivieren.\n \nSchwerkraftsbonus:\nRunter gucken and ducken zum aktivieren.\n \nMini-Blitzkrieg (Krits+Raketenwerfer):\nTaunten oder nach einem Medic rufen zum aktivieren\n \nBlitzkrieg Sperrfeuer (Krits+Uber+Wut Werfer):\nAktiviert beim verlieren eines lebens\n \nTeleportieren:\nFokusieren und Rechtsklick benutzen um einen Skill zu benutzen\n \nFallschirm:\nSpringtaste drücken in der Luft\n \nBETA 3.3 - 31/12/2015"
+	"description_sv" "The Blitzkrieg:\n''Ze healing is not as revarding as ze hurting!''\n \nFörmågor:\n \nSuper Hopp:\nSekundär attack, titta upp och släpp.\n \nWeightdown:\nTitta ner och ducka i mitten av fallet.\n \nMini-Blitzkrieg (Kritiska träffar+Raket Gevär):\nHåna eller ropa på sjukvårdare för att activare\n \nBlitzkrieg Barrage (Kritiska träffar, uber och raket gevär):\nAktiveras vid förlust av liv\n \nTeleportering:\nSikta och använd sekundär attack för att aktivera.\n \nFallskärm:\nTryck på mellanslag när du är i luften!\n \nBETA 3.3 - 31/12/2015"
+	
+	// This stuff below doesn't really matter due to static weapon override
+	"weapon1"
+	{
+		"name"				"tf_weapon_parachute"
+		"index"				"1101"
+		"attributes"		"700 ; 1 ; 701 ; 99 ; 702 ; 99 ; 703 ; 99 ; 705 ; 1 ; 640 ; 1 ; 68 ; 9 ; 269 ; 1 ; 275 ; 1"
+	}
+	"weapon2"
+	{
+		"name"				"tf_weapon_knife"
+		"index"				"1003"
+		"show"				"1"
+		"attributes"		"1 ; 0.5 ; 39 ; 0.3 ; 391 ; 1.9 ; 401 ; 1.9 ; 2013 ; 2007 ; 2014 ; 6"
+	}
+	
+	// This stuff matters however.
+	"ability1"
+	{
+		"name"	"blitzkrieg_config" // Configuration
+		
+				// Difficulty Level //
+		"arg1"	"1"
+			// 0 = Random Difficulty
+			// 1 = Easy,
+			// 2 = Normal
+			// 3 = Intermediate
+			// 4 = Difficult
+			// 5 = Lunatic
+			// 6 = Extreme
+			// 7 = Godlike
+			// 8 = Rocket Hell
+			// 9 = Total Blitzkrieg
+			// 420 = W33D
+			// 777 = RAVIOLI RAVIOLI
+			// 999 = D0NUT ST33L
+			// 1337 = LOOMYNARTY
+			// 9001 = OVER 9000!
+			
+				// Combat Mode //
+		"arg2"	"1" 		// 0: Classic, 1: Timed Waves
+			
+				// Custom Weapons //
+		"arg3"	"1" 		// 0: Disable, 1: Enable
+			
+				// RAGE/Life Loss Sounds //
+		"arg4"	"1"			// 0: Generic, 1: Voice
+			
+				// Ammo //
+		"arg5"	"180"		// RAGE
+		"arg6"	"360"		// Life Loss
+		
+				// Round Start //
+		"arg7"	"0"			// 0: Melee, 1: Rocket Launcher + Melee
+			
+				// Revive Markers //
+		"arg8"	"10"			// -1: Unlimited revives, 0: Disable, >0: Limit to X revives
+		"arg9"	"30.0" 		// Decay Time
+		
+				// Difficulty Levels //
+		"arg10" "2"			// Minimum level roll (arg1 = 0 and/or arg12 = 1)
+		"arg11" "5"			// Maximum level roll (arg1 = 0 and/or arg12 = 1)
+		"arg12" "2"			// 0: Don't level up, 1: Reroll a random difficulty, 2: Level up
+			
+				// RAGE on Kill //
+		"arg13"	"5.0"		// Percent gained
+		
+				// Projectile Bounce //
+		"arg14" "2"			// -1: Random, 0: Disable, >0: Bounce X times
+			
+				// Wave Time //
+		"arg15" "15"		// Seconds to add after the first "wave" (only if arg2 is set to 1)
+		"arg16" "60"		// Initial Wave Time
+		"arg17"	"10"		// Max waves
+		
+				// Baka? //
+		"arg18"	"1"			// Set to 1 for random chance of life loss being an accidental death.
+		
+				// Only used if melee weapon is enabled //
+		"arg19"	"0.25"		// Melee damage multiplier per difficulty level - this sets the damage bonus/penalty attribute!
+		"plugin_name"	"s93_blitzkrieg"
+	}
+	"ability2"
+	{
+		"name" "mini_blitzkrieg" // RAGE
+		"arg0"	"0"   // -1 = Death Effect, 0 = Rage
+		"arg1"	"8.0" // Kritzkrieg Duration
+		"plugin_name"	"s93_blitzkrieg"
+	}
+	"ability3"
+	{
+		"name" "blitzkrieg_barrage" // Death Effects
+		"arg0"	"-1"	// This is his life loss effect, don't change!
+		"arg1"	"10.0"	// Ubercharge Duration (seconds)
+		"arg2"	"15.0"	// Kritzkrieg Duration (seconds)
+		"arg3"	"20.0"	// Rampage (seconds)
+		"plugin_name"	"s93_blitzkrieg"
+	}
+	
+	// Dynamic Defaults
+	"ability4"
+	{
+		"name" "dynamic_jump"
+		"arg1"	"1" // charge time, same as charge_bravejump
+		"arg2"	"8.0" // cooldown, same as charge_bravejump. (NOTE: Set higher than our other other bosses to minimize glide stacking)
+		"arg3"	"0" // 1 = disabled by default (can only be re-enabled in code)
+		"arg4"	"0" // number of uses. set to 0 to be infinite.
+		"arg5"	"0.0" // cooldown before first use
+		"arg6"	"100.0" // minimum damage before super duper jump
+		"arg7"	"0" // use new jump
+		"arg8"	"5.0" // jump intensity multiplier. unlike charge_bravejump, this works for oldjump too
+		"arg9"	"0" // 1 = use RELOAD instead of ALT-FIRE
+		"arg10"	"0" // don't affect weighdown's cooldown
+		
+		// HUD strings
+		"arg17"	"Super DUPER Jump ready! Look up, press and release ALT-FIRE." // super duper jump message
+		"arg18"	"Super Jump will be ready in %.1f seconds remaining." // cooldown message
+		"arg19"	"Super Jump is %.0f percent charged.\nLook up, press and release ALT-FIRE." // charge message
+		"plugin_name"	"ff2_dynamic_defaults"
+	}
+	"ability5"
+	{
+		"name" "dynamic_weighdown"		
+		"arg1"	"0" // 1 = disabled by default (can only be re-enabled in code)
+		"arg2"	"0" // number of uses. set to 0 to be infinite.
+		"arg3"	"1.0" // the hale's normal gravity. this will practically always be 1.0
+		
+		// strings
+		"arg19"	"You have used your weighdown!"
+		"plugin_name"	"ff2_dynamic_defaults"
+	}
+	"ability6"
+	{
+		"name"	"dynamic_speed_management"
+		"arg1"	"300.0" // start speed
+		"arg2"	"450.0" // end speed
+		"plugin_name"	"ff2_dynamic_defaults"
+	}
+	
+	// Sarysa's point-teleport
+   	"ability7"  
+	{  
+		"name"	"point_teleport"
+		"arg1"	"2" // activation key. 1 is left click, 2 is right click, 3 is reload, 4 is middle mouse
+		"arg2"	"2" // number of uses per rage.
+		"arg3"	"9999.0" // max distance
+		"arg4"	"%d quick escapes remaining. Alt-fire to use." // center text string
+		"arg5"	"ghost_smoke" // particle effect (old location)
+		"arg6"	"ghost_smoke" // particle effect (old location)
+		"arg7"	"buttons/blip1.wav" // sound to play on teleport
+		"arg8"	"1" // if this is 1, preserves momentum (same as otokiru version)
+		"arg9"	"1" // if this is 1, charges are added to your total (different from otokiru version)
+		"arg10"	"1" // if this is 1, your clip is emptied upon teleport. really this feature is _only_ for blitzkrieg. at high difficulties without this you'd get cheap(er) kills.
+		"arg11"	"1.0" // attack delay set on all weapons upon point teleport. again, mainly just for Blitzkrieg. won't do squat if he rages after.
+		"plugin_name"	"s93_blitzkrieg"
+	}  
+
+	"ability8"
+	{
+		"name"	"blitzkrieg_misc_overrides"
+		
+		"arg1"	"models/freak_fortress_2/shadow93/dmedic/rocket.mdl" // rocket model override
+		"arg2"	"0x7F00FF;0xff00ff;0x4000FF;0x0000ff;0x00c0c0;0x00ff00;0x7fff00;0xffff00;0xff8000;0xff0000" // rocket recolors, standard weapons
+		"arg3"	"0xaF40FF;0xff80ff;0x8040FF;0x4040ff;0x40ffff;0x40ff40;0xafff40;0xffff80;0xffc040;0xff4040" // rocket recolors, total blitzkrieg
+
+		// for the below, 0.33 would nullify bonus damage from crits
+		"arg4"	"0.5" // damage multiplier while crits are active. use this to reduce (or increase) crit damage, which is a 3.0 multiplier
+		// for the below, 0.5 would nullify bonus damage from mannpower strength
+		"arg5"	"0.7" // damage multiplier while strength is active. use this to reduce (or increase) strength damage, which is a 2.0 multiplier
+		"arg6"	"0.7;0.75;0.83;0.87;0.94;1.0;1.0;1.0;1.0;1.0;1.0;1.0" // explosion radius modifiers based on difficulty level.
+		
+		// medic stuff -- excess medics will be stripped of their minigun but given a very powerful crossbow
+		"arg8"	"0.5" // max standard medics. it can either be a solid value (1-31) or a percentage (0.00001 to 0.99999...) [set to 0 to not use]
+		"arg9"	"1079" // crossbow weapon index (305 = normal, 1079 = festive)
+		"arg10"	"2 ; 3.0 ; 42 ; 1 ; 103 ; 1.5 ; 97 ; 0.8" // damage boost, no headshots, increased projectile speed, decreased reload time
+		"arg11"	"" // override for straight goomba damage, leave blank or set to zero to not use
+		"arg12"	"" // override for HP factor goomba damage, leave blank or set to zero to not use
+		"arg13"	"480.0" // Round limit (specify a value in seconds to enable time limit)
+		
+		// various flags, add them up for desired results
+		// 0x0001: Never change the player model.
+		// 0x0002: Never change the player class
+		// 0x0004: Never change the melee weapon
+		// 0x0008: Don't spawn a parachute.
+		// 0x0010: Don't allow novelty difficulties.
+		// 0x0020: Block random crits.
+		// 0x0040: Ensure explosion radius modifiers stack properly with automatic ones. (direct hit 0.3, air strike 0.85)
+		// 0x0080: No MVM alert sounds.
+		// 0x0100: Disable the Blitzkrieg voice messages.
+		// 0x0200: Disable the match begin Administrator messages.
+		// 0x0400: Disable the match end Administrator messages.
+		// 0x0800: Disable class reaction messages.
+		// 0x1000: Disable goombas entirely.
+		// 0x8000: VSP-specific workaround for the head collection problem. If you're not VSP, don't include this flag.
+
+		"arg14"	"0x1040"
+		
+		"plugin_name"	"s93_blitzkrieg"
+	}
+
+	//Uncomment to enable weapon difficulty per-map override
+	"ability9"
+	{
+		"name"	"blitzkrieg_map_difficulty_override"
+		
+			// note: since I'm making default difficulty level 1, arg2-arg9 will correspond with standard difficulty levels
+			// up to 2048 chars supported from the original 512
+			// to speed things up, PARTIAL NAME MATCHES ARE NOT ALLOWED! argument skips are allowed.
+		"arg1"	"6;5;4;3;2;2;2" // default difficulty for arg2-arg19
+		"arg2"	"vsh_crevice_b5;vsh_crevice_halloween;vsh_crevice_b2;vsh_crevice_norain_b3"
+		"arg3"	"vsh_rats;vsh_kakariko_b1;vsh_halo_bloodgulch_event_v2;vsh_hakurei_winter;vsh_hakurei_shrine_v3;vsh_hakurei_winter_v2;vsh_megaman6_b5d" // Lunatic Lvl
+		"arg4" 	"vsh_livingroom_v2;vsh_weaponsdepot_final;vsh_weaponsdepot_redux_b4;vsh_helms_deep_v1;vsh_harvest;vsh_west_fix;vsh_dust_showdown_final1" // Difficult Lvl
+		"arg5"	"vsh_horyuji_v1;vsh_spotline_final;vsh_top_arena_b2;vsh_castle_siege_b8" // Intermediate Lvl
+		"arg6"	"vsh_warebloom_r1a;vsh_skyhigh_resort_b8;vsh_streets_v2;vsh_magazine_b2a;vsh_magazine_b2b;vsh_factoryhell;vsh_apg_v2;vsh_citydirtbox_rc2;vsh_coldvine_b1;vsh_complex_d_v10;vsh_disneyworld_spooky_v1;vsh_draft_b2" // Normal Lvl
+		"arg7"	"vsh_warebloom_b7;vsh_spooky_ravine_b1_3;vsh_c17_yard;vsh_farm_feud;vsh_lumberyard_event;vsh_minegay_b3;vsh_oilrig_holiday;vsh_oilrig_v14;vsh_oilrig_v18;vsh_rockslide_v2" // Normal
+		"plugin_name"	"s93_blitzkrieg"
+	}
+
+	"ability10"
+	{
+		// NOTE: If you have the Teleport to Spawn plugin
+		// You should just remove this ability entirely.
+		"name"	"dynamic_env_management"
+		
+		"arg1"	"400.0" // environmental damage threshold
+		// another option is to teleport this player directly to another player
+		"arg11"	"1" // if 1, teleports the victim to a random player
+		"arg12"	"1" // 1 = try teleport on top
+		"arg13"	"1" // 0 = try teleport on side
+		"arg14"	"4.0" // self-stun duration
+		
+		"plugin_name"	"ff2_dynamic_defaults"
+	}
+	
+	"ability11"
+	{
+		"name"	"blitzkrieg_phrases" // The purpose of this is to allow customization on a per-boss basis, such as the Donut Steel variant from VS Ponyville
+		
+		"arg1"	"en"								// Primary Language - English
+		// Rocket Launcher
+		"arg2"	"{orange}Rocket Launcher: ; {blue}+100pct clip size ; {blue}+75pct firerate bonus ; {blue}+50pct self-damage push force ; {blue}+500pct max ammo ; {blue}-70pct blast damage from rocket jumps ; {blue}10s minicrits upon healer's death ; {blue}No fall damage ; {red}-10pct dmg penalty ; {red}No random crits"
+		// Flamethrower
+		"arg3"	"{orange}Flamethrower: ; {blue}+100pct dmg bonus ; {blue}+100pct flame spread ; {blue}+150pct airblast push force ; {blue}+200pct flame distance ; {blue}+70pct faster switch ; {blue}Always crits from behind ; {red}-75pct ammo consumed per second"
+		// Grenade Launcher
+		"arg4"	"{orange}Grenade Launcher: ; {blue}+15pct dmg bonus ; {blue}+200pct clip Size ; {blue}+350pct max ammo ; {blue}+75pct firerate bonus ; {blue}+75pct faster reload ; {RED}-25pct dmg penalty on contact with surfaces"
+		// Minigun
+		"arg5"	"{orange}Minigun: ; {blue}Generate Knockback rage by dealing damage. ; {blue}Use attack3 when meter is full to use."
+		// Flare Guns
+		"arg6"	"{orange}Mighty Detonator: ; {blue}Crits vs Burning Players ; {blue}+450pct self damage push force ; {red}No crits vs nonburning ; {red}No Random Critical Hits"
+		// Mediguns
+		"arg7"	"{orange}Medigun: ; {blue}Use attack3 (default middle mouse button) to deploy projectile shield ; {blue}Overheal Expert applied ; {blue}Healing Mastery applied ; {blue}+25pct faster charge rate ; {blue}+25pct faster weapon switch ; {blue}+50pct overheal bonus"
+		// Build PDA
+		"arg8"	"{orange}Construction PDA: ; {blue}Teleporters are bidirectional ; {blue}+10 Metal regenerated every 5 seconds ; {blue}+300pct Dispenser range ; {blue}+30pct Faster build speed ; {blue}+150pct Building Health ; {blue}+25pct Faster sentry firing speed ; {blue}+25pct Sentry damage bonus"
+		// Sandvich
+		"arg9"	"{orange}Sandvich: ; {blue}+50pct Faster Regen Rate"
+		// Sandman
+		"arg10"	"{orange}Sandman: ; {blue}+400pct Max Misc Ammo ; {blue}+50pct Faster Recharge Rate ; {blue}Altfire to launch baseball ; {red}-15pct Max Health"
+		// Battalion's Backup
+		"arg11"	"{orange}Battalion's Backup: ; {blue}+150pct longer buff duration ; {blue}+50pct max health"
+		// Buff Banner
+		"arg12"	"{orange}Buff Banner: ; {blue}+150pct longer buff duration ; {blue}+50pct max health"
+		// Concheror
+		"arg13"	"{orange}The Concheror: ; {blue}+150pct longer buff duration ; {blue}50pct max health"
+		// Direct Hit
+		"arg14"	"{orange}Direct Hit: ; {blue}+50pct Damage bonus ; {blue}_100pct Projectile speed ; {blue}Increased Attack speed while blast jumping ; {blue}Rocket Specialist ; {blue}Clip size increased as you deal damage ; {blue}10 sec minicrits when healer is killed ; {blue}No fall damage ; {blue}Minicrits airborne targets ; {blue}Minicrits become crits ; {red}-70pct Explosion radius penalty ; {red}No Random Critical Hits"
+		// Black Box
+		"arg15"	"{orange}Black Box: ; {blue}+50pct Clip Size ; {blue}OnHit: +5 Health ; {blue}+75pct Faster Firing Speed ; {blue}+200pct Self Damage Push Force ; {blue}+250pct Max Primary Ammo ; {blue}-40pct Blast Damage from rocket jumps ; {blue}+50pct damage bonus while being healed ; {red}No Random Critical Hits ; {red}-50pct Blast Radius penalty ; {red}+30pct longer weapon switch time while not healed"
+		// LochnLoad
+		"arg16"	"{orange}LochnLoad: ; {blue}+75pct Damage bonus ; {blue}+25pct Clip Size bonus; {blue}+200pct Max Primary Ammo ; {blue}+75pct Faster Firing Speed ; {blue}+75pct Faster Reload Time ;{red}Launched bombs shatter on surfaces"
+		// Brass Beast
+		"arg17"	"{orange}Brass Beast: ; {blue}+20pct Damage Bonus ; {blue}Generate Knockback rage by dealing damage. Use attack3 when meter is full to use ; {red}+50pct Slower Spinup Time ; {red}+60pct Slower move speed while deployed"
+		// Liberty Launcher
+		"arg18"	"{orange}Liberty Launcher: ; {blue}+150pct Clip Size ; {blue}+60pct Faster Firing Speed ; {blue}+200pct Self Damage Push Force ; {blue}+250pct Max Primary Ammo ; {red}-25pct Damage Penalty ; {blue}-50pct Blast Damage from rocket jumps ; {red}-15pct Blast Radius penalty"
+		// Tomislav
+		"arg19"	"{orange}Tomislav: ; {blue}+10pct Damage Bonus. ; {blue}+10pct Faster Spinup Time. ; {blue}No Barrel Spinup Sound ; {blue}Generate Knockback rage by dealing damage. Use attack3 when meter is full to use ;{red}-20pct Slower Firing Speed"
+		// Cow Mangler
+		"arg20"	"{orange}Cow Mangler: ; {blue}+50pct damage bonus ; {blue}+100pct Self Damage Push Force ; {blue}No Ammo needed ; {blue}A successful hit midair stuns the boss for 5 seconds"
+		// Wrap Assassin
+		"arg21"	"{orange}Wrap Assassin: ; {blue}+400pct Max Misc Ammo ; {blue}+50pct Faster Recharge Rate ; {blue}Altfire to launch ornament ; {red}-70pct Damage Penalty"
+		// Beggar's Bazooka
+		"arg22"	"{orange}Beggar's Bazooka: ; {blue}+10pct Damage Bonus ; {blue}+650pct Clip Size ; {blue}+85pct Faster Firing Speed ; {blue}+50pct Self Damage Push Force ; {blue}+1000pct Max Primary Ammo ; {blue}+75pct Faster reload speed ; {blue}-75pct Blast Damage from rocket jumps ; {blue}Hold Fire to load up to 30 Rockets ; {red}Overloading will Misfire ; {red}+30 Degrees Random Projectile Deviation"
+		// HuoLong Heater
+		"arg23"	"{orange}HuoLong Heater: ; {blue}+10pct Max Primary Ammo onwearer ; {blue}+25pct Afterburn Damage Bonus ; {blue}Sustains a ring of flames while deployed ; {blue}Generate Knockback rage by dealing damage. Use attack3 when meter is full to use ; {red}-Uses 5 Ammo per second while deployed ; {red}+25pct damage from melee sources while active"
+		// Loose Cannon
+		"arg24"	"{orange}Loose Cannon: ; {blue}+25pct Damage bonus ; {blue}+50pct Clip Size ; {blue}+300pct Max Primary Ammo ; {blue}+75pct Faster Firing Speed ; {blue}+75pct Faster Reload Time ; {red}-30pct damage on contact with surfaces ; {red}Cannonballs have a fuse time of 1 second - fuses can be primed to explode earlier by holding down the fire key. ; {red}Cannonballs do not explode on impact"
+		// Air Strike
+		"arg25"	"{orange}Air Strike: ; {blue}Increased Attack speed while blast jumping ; {blue}Rocket Specialist applied ; {blue}Clip size increased as you deal damage ; {blue}10s minicrit boost when healer is killed ; {blue}No fall damage ; {red}-10pct Damage Penalty ; {red}No Random Critical Hits"
+		// Panic Attack
+		"arg26"	"{orange}Panic Attack (while active): ; {blue}+75pct Faster move speed ; {blue}+34pct faster reload time ; {blue}+15s minicrit boost when healer is killed ; {blue}Hold fire to load up to 6 shells ; {blue}Fire rate increases as health decreases ; {red}Weapon spread increases as health decreases ; {red}+50pct blast, fire and crit damage vulnerability ; "
+		// Iron Bomber
+		"arg27"	"{orange}Iron Bomber: ; {blue}+10pct Damage bonus ; {blue}+400pct Clip Size ; {blue}+500pct Max Primary Ammo ; {blue}+75pct Faster Firing Speed ; {blue}+75pct Faster Reload Time ; {red}=40pct damage penalty on grenades that explode on timer ; {red}Grenades have very little bound and roll"
+		// HUD Strings
+		"arg28"	"Difficulty: %s"												// HUD - Difficulty - Boss
+		"arg29"	"Difficulty: %s\nRevives: %i of %i" 							// HUD - Difficulty (with revive limit)
+		"arg30"	"Difficulty: %s"												// HUD - Difficulty (unlimited revives)
+		"arg31"	"Easy"															// HUD - Easy
+		"arg32"	"Normal"														// HUD - Normal
+		"arg33"	"Intermediate"													// HUD - Intermediate
+		"arg34"	"Difficult"														// HUD - Difficult
+		"arg35"	"Lunatic"														// HUD - Lunatic
+		"arg36"	"Insane"														// HUD - Insane
+		"arg37"	"Godlike"														// HUD - Godlike
+		"arg38" "Rocket Hell"													// HUD - Rocket Hell
+		"arg39" "Total Blitzkrieg"												// HUD - Total Blitzkrieg
+		"arg40" "RNG Level: %i"													// HUD - RNG Level
+		"arg41" "Next Wave in: %s"												// HUD - Timer
+		"arg42" "Wave: %i of %i\nNext Wave in: %s"								// HUD - Timer / Wave Count
+		"arg43"	"You must rely on your rockets to finish enemies off!"			// HUD - Rocket launcher only!
+		"arg44"	"Use your melee weapon to finish off nearby enemies!"			// HUD - Rocket launcher + Melee
+		"arg45"	"[Blitzkrieg] You have been randomly selected to be a crossbow medic.\nDon't worry, your crossbow is very powerful." // random selection notification
+		"arg46"	"[Blitzkrieg] The medigun medic limit this round is %d." // medic limit notification
+		"arg47"	"[Blitzkrieg] You are not a designated medigun medic.\nYou will use the crossbow instead." // needed for medic limit
+		"arg48" "[Blitzkrieg] %N had a total of %i wins, %i losses, %i kills and %i deaths!"		// Boss Stats - round end
+		"arg49" "[Blitzkrieg] You had a total of %i wins, %i losses, %i kills and %i deaths!"		// Boss Stats - round end (as boss)
+		"arg50"	"Revives: %i"																		// Revive counter - Spectator
+		"arg51" "Revives: %i - %N's Revives: %i"													// Revive counter - Spectating player
+		"arg52" "%N's Stats - Wins: %i | Losses: %i | Kills: %i | Deaths: %i"						// Stats - Spectating boss
+		"arg53" "Wins: %i | Losses: %i | Kills: %i | Deaths: %i"									// Stats - Boss HUD
+		"arg54" "You can no longer be revived!"														// Revive limit exceeded
+		
+		"arg101"	"es" // Español
+		"arg128"	"Nivel: %s"						
+		"arg129"	"Nivel: %s\nVeces Revivido: %i de %i"
+		"arg130"	"Nivel: %s"
+		"arg131"	"Facil"	
+		"arg132"	"Normal"
+		"arg133"	"Intermediano"
+		"arg134"	"Dificil"
+		"arg135"	"Lunatico"
+		"arg136"	"Brutal"
+		"arg137"	"Imposible"
+		"arg138" 	"Infierno de Cohetes"
+		"arg139" 	"Blitzkrieg Total"
+		"arg140" 	"Nivel: %i"
+		"arg141" 	"Proxima Etapa en: %s"
+		"arg142" 	"Etapa: %i de %i\nProxima Etapa en: %s"
+		"arg143" 	"Acaba con el equipo enemigo con tus lanzacohetes!"
+		"arg144" 	"Usa tu arma de cuerpo a cuerpo para acabar con tus enemigos cuando ya no tienes cohetes!"
+		"arg145"	"[Blitzkrieg] ¡Has sido elegido para usar un ballesta del cruzado en vez de una pistola médica!\nTu ballesta del cruzado es super potente!" // random selection notification
+		"arg146"	"[Blitzkrieg] El limite de medicos que pueden usar la pistola médica es %d." // medic limit notification
+		"arg147"	"[Blitzkrieg] ¡No eres un medico designado para usar la pistola médica!" // needed for medic limit
+		"arg148" 	"[Blitzkrieg] ¡%N tiene un total de %i victorias, %i derrotas, %i victimas y %i muertes!"
+		"arg149" 	"[Blitzkrieg] ¡Tienes un total de %i victorias, %i derrotas, %i victimas y %i muertes!"
+		"arg150" 	"¡Has revivido %i veces antes de morir!"		
+		"arg151" 	"Has revivido %i veces antes de morir - %N ha sido revivido %i veces"
+		"arg152" 	"Estadísticas de %N - Victorias: %i | Derrotas: %i | Victimas: %i | Muertes: %i"
+		"arg153" 	"Victorias: %i | Derrotas: %i | Victimas: %i | Muertes: %i"
+		"arg154" 	"¡Ya no puedes ser revivido!"	
+		
+		"arg201"	"ko" // 조선말
+		"arg202"    "로켓 런처: ; 장탄수 100pct발사속도 75pct ; 자가 피해 넉백 50pct ; 착용시 최대 주무기 탄약량 500pct ; 로켓 점프 자가 피해 70pct ; 치료중인 메딕이 사망할 경우 10초간 소형 치명타 증진 ; W착용시 추락 피해 면역 ; 피해량 10pct ; 무작위 치명타가 발생하지 않음"
+		"arg203"	"화염방사기: ; 피해량 100pct ; 화염 방사 범위 100pct ; 압축공기분사 위력 150pct  ; 화염 방사 거리 200pct ; 무기 변환 속도 70pct 증가 ; 뒤에서 공격할 경우 치명타 발생 ; 초당 탄약 소모량 75pct"
+		"arg204"	"유탄발사기: ; 피해량 15pct ; 장탄수 200pct ; 최대 주무기 탄약량 350pct ; 발사 속도 75pct ; 장전 속도 75pct ; 땅에 구르는 유탄은 25pct의 피해를 입힘"
+		"arg205"	"미니건: ; 분노를 사용함으로써 적중시 대상을 밀쳐냄. 분노 게이지가 충전되면 마우스3을 눌러 사용하십시오."
+		"arg206"	"강력한 조명총: ; 치명타 vs 적중시 불을 붙힘 ; 자가 피해 넉백 450pct ; 치명타 없음 vs 불을 붙히지 않음 ; 무작위 치명타가 발생하지 않음"
+		"arg207"	"메디건: ; 마우스3을 눌러 투사체 포호막을 발동하십시오 ; 과치료 전문가 적용 ; 치료의 달인 적용 ; 우버 차지 속도 25pct ; 무기 변환 속도 25pct 증가 ; 과치료량 50pct"
+		"arg208"	"건설 PDA: ; 양방향 텔레포터 건설 ; 5초당 금속량 10 재생 ; 디스펜서 범위 300pct  ; 건설 속도 30pct ; 건물 내구도 150pct ; 센트리 발사 속도 25pct ; 센트리 피해량 25pct"
+		"arg209"	"부대지원: ; 증진 지속 시간150pct ; 최대 체력 50pct"
+		"arg210"	"샌드맨: ; 기타 장탄량 400pct ; 재충전 속도 50pct ; 마우스2를 눌러서 공을 던지십시오 ; 최대 체력 15pct"
+		"arg211"	"사기증진 깃발: ; 증진 지속 시간 150pct ; 최대 체력 50pct"
+		"arg212"	"사기증진 깃발: ; 증진 지속 시간 150pct ; 최대 체력 50pct"
+		"arg213"	"전복자r: ; 증진 지속 시간 150pct ; 최대 체력 50pct"
+		"arg214"	"직격포: ; 피해량 50pct ; 발사체 속도 100pct ; 폭발물 점프시 발사 속도 증가 ; 로켓 전문가 ; 피해를 가함에 따라 장탄량 증가 ; 치료중인 메딕이 사망할 경우 10초간 소형 치명타 증진\b착용시 추락 피해 면역 ; 공중에 뜬 상대에게 소형 치명타 ; 소형 치명타가 발생할 경우 치명타 ; 폭발 범위 70pct ; 무작위 치명타가 발생하지 않음"
+		"arg215"	"직격포: ; 피해량 50pct ; 발사체 속도 100pct ; 폭발물 점프시 발사 속도 증가 ; 로켓 전문가 ; 피해를 가함에 따라 장탄량 증가 ; 치료중인 메딕이 사망할 경우 10초간 소형 치명타 증진\b착용시 추락 피해 면역 ; 공중에 뜬 상대에게 소형 치명타 ; 소형 치명타가 발생할 경우 치명타 ; 폭발 범위 70pct ; 무작위 치명타가 발생하지 않음"
+		"arg216"	"로크 앤 로드: ; 피해량 75pct ; 장탄량 25pct ; 최대 주무기 탄약량 200pct ; 발사 속도 75pct ; 재장전 속도 75pct ; 벽이나 땅에 닿은 유탄은 부서집니다"
+		"arg217"	"황동 야수: ; 피해량 20pct ; 분노를 사용함으로써 적중시 대상을 밀쳐냄. 분노 게이지가 충전되면 마우스3을 눌러 사용하십시오 ; 예열 시간 50pct e ; 발사 중 이동속도 60pct"
+		"arg218"	"자유 투사: ; 장탄량 150pct ; 발사 속도 60pct ; 자가 피해 넉백 200pct ; 최대 주무기 탄약량 250pct ; 피해량 25pct ; 로켓 점프로 인한 자가 피해량 50pct ; 폭발 범위 15pct"
+		"arg219"	"토미슬라프: ; 피해량 10pct ; 예열 속도 10pct ; 총열 회전음이 없습니다 ; 분노를 사용함으로써 적중시 대상을 밀쳐냄. 분노 게이지가 충전되면 마우스3을 눌러 사용하십시오 ; 발사 속도 20pct"	
+		"arg220"	"소도둑 5000: ; 피해량 50pct ; 자가 피해 넉백 100pct ; 탄약을 소모하지 않음 ; 공중에 있는 보스에 적중시 5초간 기절 시킴"
+		"arg221"	"포장지 암살자: ; 기타 탄약량 400pct ; 재충전 속도 50pct ; 마우스 우클릭을 눌러 장식물을 던지십시오 ; 피해량 70pct"
+		"arg222"	"거지의 바주카: ; 피해량 10pct ; 장탄량 650pct ; 발사 속도 85pct ; 자가 피해 넉백 50pct ; 최대 주무기 탄약량 1000pct ; 재장전 속도 75pct ; 로켓 점프로 인한 자가 피해량 75pct ; 발사 버튼을 눌러 최대 30발의 로켓을 장전할 수 있습니다 ; 과다 장전시 불발합니다 ; 발사체가 30도의 편차로 무작위로 탈선합니다"
+		"arg223"	"화룡표 발열기: ; 착용시 최대 주무기 탄약량 10pct ; 화상 피해량 25pct ; 총열 회전시 불의 고리를 생성합니다 ; 분노를 사용함으로써 적중시 대상을 밀쳐냄. 분노 게이지가 충전되면 마우스3을 눌러 사용하십시오 ; 총열 회전시 초당 탄약량 5 ; 착용시 근접 피해에 25pct 취약"
+		"arg224"	"통제불능 대포: ; 피해량 25pct ; 장탄량 50pct ; 최대 주무기 탄약량 300pct ; 발사 속도 75pct ; 재장전 속도 75pct ; 30pct damage on contact with surfaces ; 포탄은 1초 동안 타는 도화선을 지녔습니다. 발사 버튼을 누르고 있으면 도화선을 미리 태워 포탄을 더 빨리 폭발시킬 수 있습니다. ; 포탄은 충돌해도 터지지 않습니다"
+		"arg225"	"공중폭격포: ; 폭발물 점프시 발사 속도 증가 ; 로켓 전문가 ; 피해를 가함에 따라 장탄량 증가 ; 치료중인 메딕이 사망할 경우 10초간 소형 치명타 증진 ; 착용시 추락 피해 면역 ; 피해량 10pct ; 무작위 치명타가 발생하지 않음"
+		"arg226"	"공황 공격 (착용시): ; 이동 속도 75pct ; 재장전 속도 34pct ; 치료중인 메딕이 사망할 경우 15초간 소형 치명타 증진 ; 폭발 피해, 화염 피해, 치명타 피해에 50pct 취약 ; 발사 버튼을 눌러 최대 6발의 탄약을 장전할 수 있습니다 ; 체력이 감소할수록 발사 속도가 증가합니다 ; 체력이 감소할수록 집탄률이 감소합니다"
+		"arg227"	"무쇠 폭탄 발사기: ; 피해량 10pct ; 장탄량 400pct ; 최대 주무기 탄약량 500pct ; 발사 속도 75pct ; 재장전 속도 75pct ; 3초 후 터진 유탄은 피해량40pct 감소 ; 유탄은 매우 적게 튀어오르고 구릅니다"
+		"arg228"	"난이도: %s"
+		"arg229"	"난이도: %s\n소생 횟수: %i / %i"
+		"arg230"	"난이도: %s"
+		"arg231"	"쉬움"
+		"arg232"	"보통"
+		"arg233"	"중간"
+		"arg234"	"어려움"
+		"arg235"	"루나틱"
+		"arg236"	"광기의"
+		"arg237"	"신급의"
+		"arg238"	"로켓지옥"
+		"arg239"	"대학살 그 자체"
+		"arg240"	"RNG 레벨: %i"
+		"arg241"	"다음 웨이브까지: %s"
+		"arg242"	"웨이브: %i / %i\n다음 웨이브까지: %s"
+		"arg243"	"적들을 끝장내기 위해선 로켓에 의존해야만 합니다!"
+		"arg244"	"근접무기를 사용해 적들을 끝장내세요!"
+		"arg245"	"[Blitzkrieg] 무작위로 쇠뇌를 장비한 메딕으로 선택되었습니다.\n걱정하지 마세요, 쇠뇌는 아주 강력합니다."
+		"arg246"	"[Blitzkrieg] 이번 라운드에서 메디건 메딕의 제한은 %d 입니다."
+		"arg247"	"[Blitzkrieg] 메디건 메딕으로 지정받지 않았습니다.\n메디건 대신 쇠뇌를 사용하게 됩니다."
+		"arg248"	"[Blitzkrieg] %N님의 기록 /n우승: %i | 패배: %i | 사살: %i | 사망: %i"
+		"arg249"	"[Blitzkrieg] 당신의 기록 /n우승: %i | 패배: %i | 사살: %i | 사망: %i"
+		"arg250"	"남은 소생 횟수: %i"
+		"arg251"	"남은 소생 횟수: %i - %N님의 남은 소생 횟수: %i"
+		"arg252"	"%N님의 기록 - 우승: %i | 패배: %i | 사살: %i | 사망: %i"
+		"arg253"	"이제 더 이상 소생될 수 없습니다!"
+
+
+		"arg301"	"ru" // ру́сский язы́к
+		"arg302"	"Ракетомет: ; 100% к размеру обоймы ; 75% к скорости атаки ; 50% к сопротивляемости от взрывов ; 500% к боеприпасам ; 70% урона от рокетджампа ; 10 сек криты после возрождения ; Нет урона от приземления ; -10% урона ; Без случайных критов"
+		"arg303"	"Огнемет: ; 100% к урону ; 100% к радиусу огня ; 150% скорость отражения снарядов ; 200% к дальности огня ; 70% к скорости смены оружия ; Криты сзади ; 75% к трате патронов"
+		"arg304"	"Гранатомет: ; 15% к урону ; 200% к обойме ; 350% к кол-ву боеприпасов ; 75% к скорости атаки ; 75% быстрее перезарядка ; -25% урона при соприкосновению снаряда с землей"
+		"arg305"	"Пулемет: ; Генерирую отталкивающую ярость при нанесении урона. ; Используйте attack3 когда ярость готова."
+		"arg306"	"Сильный детонатор: ; Криты горящим врагам ; 450% урона по себе ; Без критов по негорящим врагам ; Без случайных критов"
+		"arg307"	"лечебная пушка: ; Используй attack3 (СКМ) для включения щита ; Сверхлечение эксперта активировано ; Сверхлечение мастера активировано ; 25% к скорости накопления убера ; 25% к скорости смены оружия ; 50% бонуса к сверхлечению"
+		"arg308"	"КПК постройки: ; Телепорты двухнаправленные ; 10 ед. металла регенерируются каждые 5 сек. ; 30% к диапазону раздатчика ; 30% К скорости возведения постройки ; 150% к прочности постройки ; 25% к скорости стрельбы турели ; 25% к урону турели"
+		"arg309"	"Сэндвич: ; 50% к его регенерации"
+		"arg310"	"Дрема: ; 400% к обойме ; 50% к скорости регенерации ; Альт-атака для мяча ; 15% к здоровью"
+		"arg311"	"Поддержка батальона: ; 150% к длительности эффекта ; 50% к здоровью"
+		"arg312"	"Вдохновляющее знамя: ; 150% к длительности эффекта ; 50% к здоровью"
+		"arg313"	"Завоеватель: ; 150% к длительности эффекта ; 50% к здоровью"
+		"arg314"	"Прямое попадание: ; 50% к урону ; 100% к скорости снаряда ; Увеличение скорости атаки в воздухе ; Специалист по ракетам ; Увеличение обоймы при нанесении урона ; 10 сек. миникритов после убийства медика\bНет урона от падения ; Миникриты по целям в воздухе ; Все миникриты превращаются в криты ; 70% радиуса взрыва ; Без случайных критов"
+		"arg315"	"Черный ящик: ; 50% к размеру обоймы ; При попадании: +5 HP ; 75% к скорости атаки ; 200% к урону по себе ; 250% к кол-ву боеприпасов ; 40% урона от рокетджампов ; 50% урона от лечения ; Без случайных критов ; 50% радиус взрыва ; 30% больше скорости переключения оружия, когда не лечится"
+		"arg316"	"Подкидыш: ; 75% к урону ; 25% к обойме ; 200% к боеприпасам ; 75% к скорости атаки ; 75% к скорости перезарядки ; Снаряды рассыпаются об землю"
+		"arg317"	"Латунный монстр: ; 20% к урону ; Генерируют отталкивающую ярость при нанесении урона. Используйте attack3 когда ярость накоплена ; 50% медленне раскрутка ; 60% медлительности к ходьбе, когда раскручивается"
+		"arg318"	"Освободитель: ; 150% к обойме ; 60% к скорости атаки ; 200% урона по себе ; 250% к боеприпасам ; 25% меньше урона ; 50% урона от рокетджампа ; 15% к радиусу взрыва"
+		"arg319"	"Томислав: ; 10% к урону. ; 10% быстрее раскрутка. ; Нет звука при раскрутке ; Генерирует отталкивающую ярость. Используйте attack3 когда ярость накоплена ; 20% медленнее стрельба"
+		"arg320"	"Линчеватель скота: ; 50% к урону ; 100% урона по себе ; Патроны не требуются ; При удачном попадании в босса в воздухе оглушит его на 5 сек."
+		"arg321"	"Оберточный убийца: ; 400% к обойме ; 50% к регенерации ; Альт-атака для запуска украшения ; -70% урона"
+		"arg322"	"Базука бродяги: ; 10% к урону ; 650% к обойме ; 85% к скорости атаке ; 50% к урону по себе ; 1000% к кол-ву боеприпасов ; 75% быстрее перезарядка ; 75% урона с рокетджампов ; Прижми ЛКМ чтобы запустить 30 ракет ; Перебор ракет может ранить ; 30 градусов отклонения"
+		"arg323"	"Огненный дракон: ; 10% к кол-ву боеприпасов ; 25% к урону после догорания ; Создает кольца огня при раскрутке ; Генерируют отталкивающую ярость при нанесении урона. Используйте attack3 когда ярость накоплена ; Использует 5 патронов при раскрутке ; 25% к урону от оружия ближнего боя когда в руках"
+		"arg324"	"Пушка без лафета: ; 25% к урону ; 50% к обойме ; 300% к кол-ву боеприпасов ; 75% к скорости атаки ; 75% к скорости атаки ; 30% урона при сопрокосновении с землей ; Ядра взрываются через 1 сек.; могут быть взорваны ранее, прижимая ЛКМ. ; Ядра не взрываются когда касаются жертвы"
+		"arg325"	"Авиаудар: ; Увеличение скорости атаки при нахождении в воздухе ; Специалист по ракетам ; Увеличении обоймы при нанесении урона ; При убийстве лечащего вас медика, миникриты на 10 сек. ; Нет урона от падении, когда взято ; -10% урона ; Без случайных критов"
+		"arg326"	"Паническая атака (когда взято): ; 75% к скорости бега ; 34% к скорости перезарядки ; При убийстве лечащего вас медика, миникриты на 15 сек. ; 50% уязвимости к критам, взрывам и огню ; Прижмите ЛКМ для зарядки 6 патронов ; При уменьшении здоровья, скорость атаки увеличивается ; При уменьшении здоровья, разброс увеличивается"
+		"arg327"	"Железный бомбардир: ; 10% к урону ; 400% к обойме ; 500% к кол-ву боеприпасов ; 75% к скорости атаки ; 75% к скорости перезарядки ; 40% урона гранатам, которые взорвались по таймеру ; Гранаты отскакивают и перекатываются меньше"
+		"arg328"	"Сложность: %s"												
+		"arg329"	"Сложность: %s\nRevives: %i of %i" 							
+		"arg330"	"Сложность: %s"												
+		"arg331"	"Легко"							
+		"arg332"	"Нормально"														
+		"arg333"	"Средне"													
+		"arg334"	"Сложно"														
+		"arg335"	"Сумасшедший"														
+		"arg336"	"Безумный"														
+		"arg337"	"Богоподобный"												
+		"arg338" 	"Рокетный ад"													
+		"arg339" 	"Настоящий блитцкриг"								
+		"arg340" 	"Уровень ранга: %i"								
+		"arg341" 	"Следующая волна через: %s"							
+		"arg342" 	"Волна: %i of %i\nСледующая волна через: %s"								
+		"arg343"	"Полагайтесь на свои рокеты, чтобы убить врагов!"
+		"arg344"	"Используйте оружие ближнего боя!"			
+		"arg345"	"[Blitzkrieg] Вы были хаотично выбраны, чтобы стать медиком с арбалетом.\nНе волнуйтесь, этот арбалет силен."
+		"arg346"	"[Blitzkrieg] Лимит медика с лечебной пушкой %d." 
+		"arg347"	"[Blitzkrieg] Вы не можете взять лечебную пушку.\nВы все равно будете с арбалетом."
+		
+		
+		"arg401"  "sv"		// Svenska
+        "arg402"  "Raket Gevär: ; 100% primär ammo ; 75% attackhastighet ; 50% självskade skjutkraft ; 500% maximal ammunition ; 70% skjutkraft från rakethopp ; 10s mini-kritiska träffar vid sjukvårdares död ; Ingen fallskada ; 10% skadestraff ; Inga slumpade kritiska träffar"
+        "arg403"  "Eldkastare: ; 100% extra skada ; 100% eldspridning ; 150% luftblåsts skjutkraft ; 200% eldräckvidd ; 70% snabbare vapenbyte ; Alltid kritiska träffar bakifrån ; 75% ammunition förbrukat per sekund"
+        "arg404"  "Granat Gevär: ; 15% skadebonus ; 200% primär ammunition ; 350% maximal ammunition ; 75% skjuthastighet ; 75% snabbare omladdning ; 25% skadestraff vid kontakt med ytor."
+        "arg405"  "Minigun: ; Generera puttkraft genom att göra skada. ; Använd attack3 när mätaren är full."
+        "arg406"  "Kraftfull detonator: ; Kritiska träffar mot brinnande spelare ; 450% självskade skjutkraft ; Inga kritiska träffar mot icke-brinnande spelare ; Inga slumpade kritiska träffar."
+        "arg407"  "Hälsovapen: ; Använd attack3 (som vid standard är den mittersta musknappen) för att aktivera en projektilsköld. ; Överhelningsexpert uppgradering ; Helningsmästare uppgradering ; 25% snabbare laddningshastighet ; 25% snabbare vapenbyte ; 50% överhelningsbonus"
+        "arg408"  "Konstruktions PDA: ; Teleportörer fungerar åt båda hållen. ; 10 metal återgenereras var 5:e sekund. ; 300% Dispenser räckvidd ; 30% snabbare bygghastighet ; 150% byggnadshälsa ; 25% snabbare vaktgevär skjuthastighet ; 25% extra vaktgevär skada"
+        "arg409"  "Smörgås: ; 50& snabbare återställningshastighet"
+        "arg410" "John Blund: ; 400% maximal ammunition ; 50% snabbare återställningshastighet ; Sekundärattack för att avfyra baseball ; 15% extra maximal hälsa"
+        "arg411" "Bataljonens Förstärkning: ; 150& längre förstärkningsvarighet ; 50% extra max hälsa"
+        "arg412" "Buffbaneret: ; 150% längre förstärkningsvarighet ; 50% extra maximal hälsa"
+        "arg413" "Trumpetsnäcka: ; 150% längre förstärkningsvarighet ; 50& extra maximal hälsa"
+        "arg414" "Direkta Träffen: ; 50% extra skada ; 100% extra projektilhastighet ; Ökad attackhastighet vid explosionshopp ; Raket Specialist ; Primär ammunition ökas vid varje träff ; 10 sek mini-kritiska träffar vid dödning av sjukvårdare\bIngen fallskada ; Fiender i luften mottar mini-kritiska träffar ; Mini-kritiska träffar blir kritiska ; 70% explosionsradius ; Inga Slumpade kritiska träffar"
+        "arg415" "Svarta Lådan: ; 50% extra primär ammunition ; Vid träff: 5 HP återfås ; 75% snabbare avfyrningshastighet ; 200% självskade skjutkraft ; 250% extra ammuntion ; 40% explosionsskada från rakethopp ; 50% extra skada vid helning av sjukvårdare ; Inga slumpade kritiska träffar ; 50% explosionsradius ; 30% långsammare vapenbyte medan du inte är helad"
+        "arg416" "Loch-n-Load: ; 75% extra skada ; 25% primär ammunition ; 200% maximal ammunition ; 75% extra skjuthastighet ; 75% snabbare omladdningshastighet ; Avfyrade bomber går sönder vid kontakt med ytor"
+        "arg417" "Mässingsmonstret: ; 20% extra skada ; Generera skjutkraft vid träff. Använd attack3 när mätaren är full för att aktivera. ; 50% saktare uppspinningshastighet ; 60% saktare rörelsehastighet medans aktiverad"
+        "arg418" "Frihetsgeväret: ; 150% primär ammunition ; 60% snabbare avfyrningshastighet ; 200% självskade skjutkraft ; 250% maximal ammunition ; 25% skadestraff ; 50% explosionsskada från rakethopp ; 15% explosionsradius"
+        "arg419" "Tomislav: ; 10% extra skada. ; 10% snabbare uppsinningshastighet. ; Tyst uppspinning ; Generera skjutkraft vid träff. Använd attack3 när mätaren är full för att aktivera ; 20% saktare avfyrningshastighet"
+        "arg420" "Cow Mangler 5000: ; 50% extra skada ; 100% självskade skjutkraft ; Ingen ammunition krävs ; En lyckad träff i luften bedövar bossen i 5 sekunder"
+        "arg421" "Omslagsmördaren: ; 400% maximal sekundär ammunition ; 50% snabbare återhämtningshastighet ; Sekundär attack för att avfyra en julkula ; 70% skadestraff"
+        "arg422" "Beggar's Bazooka: ; 10% extra skada ; 650% primär ammunition ; 85% snabbare skjuthastighet ; 50% självskade skjutkraft ; 1000% maximal ammunition ; 75% snabbare omladdningshastighet ; 75% explosionsskada från rakethopp ; Håll ned attack för att ladda upp till 30 raketer ; Överladdning orsakar självskada ; 30 graders slumpmässiga raket riktning"
+        "arg423" "Huo-Long Heater: ; 10% maximal ammunition för bäraren ; 25% äfterbrännings skade bonus ; Skapar en ring av eld medans aktiv ; Generera skjutkraft vid träff. Använd attack3 när mätaren är full för att aktivera ; Förbrukar 5 ammunition per sekund medans aktiv ; 25% skada från närstridsvapen medans aktiv"
+        "arg424" "Loose Cannon: ; 25% extra skada ; 50% primär ammunition ; 300% maximal ammunition ; 75% snabbare skjuthastighet ; 75% snabbare omladdningshastighet ; 30% skada vid kontakt av ytor ; Kanonkulorna har en laddningstid på 1 sekund; kan orsaka kanonkulorna att avfyras senare genom att hålla ned attack. ; Kanonkulor exploderar inte vid kontakt"
+        "arg425" "Air Strike: ; Ökad attachastighet vid explosionshopp ; Raketspecialist uppgradering ; Primär ammunition ökar när du gör skada ; När sjukvårdaren som helar dig dör, så får du 10 sekunder av kritiska träffar ; Ingen fallskada ; 10% skadestraff"
+        "arg426" "Panikattacken (medan aktiv): ; 75% snabbare rörelsehastighet ; 34p% snabbare omladdningshastighet ; När sjukvårdaren som helar dig dör, så får du 15 sekunder av kritiska träffar ; 50% extra skada från explosioner, eld och kulor ; Håll ned attack för att ladda upp till 5 skott ; Avfyrningshastigheten ökar medan hälsan minskar ; Kulspridning ökar medan hälsan sjunker"
+        "arg427" "Järnbombaren: ; 10% extra skada ; 400% primär ammunition ; 500% maximal ammunition ; 75% snabbare skjuthastighet ; 75% snabbare omladdningshastighet ; 40% extra skada för bomber som exploderar av timern ; Bomber har väldigt lite studs och rullning"
+        "arg428" "Svårighetsgrad: %s"                                               
+        "arg429" "Svårighetsgrad: %s\nÅterupplivningar: %i of %i"                       
+        "arg430" "Svårighetsgrad: %s"                                              
+        "arg431" "Lätt"                                              
+        "arg432" "Normal"                                      
+        "arg433" "Någorlunda svårt"                                                
+        "arg434" "Svårt"                                                      
+        "arg435" "Galet svårt"                                                   
+        "arg436" "Sinnesjukt svårt"                                                 
+        "arg437" "Gudalik"                                                      
+        "arg438" "Rakethelvete"                                                  
+        "arg439" "Total raketspam"                                               
+        "arg440" "RNG Level: %i"                                                 
+        "arg441" "Nästa runda om: %s"                                               
+        "arg442" "Runda: %i av %i\nNästa runda om: %s"                              
+        "arg443" "Du måste förlita dig på dina raketer att göra slut på dina fiender!"         
+        "arg444" "Använd ditt närstridsvapen för att göra slut på fiender nära dig!"         
+        "arg445" "[Blitzkrieg] Du har slumpats ut att bli en armborst sjukvårdare.\nOroa dig inte, din armborst är väldigt kraftull!"
+        "arg446" "[Blitzkrieg] Begränsning av hälsovapen sjukvårdare denna runda är %d." // medic limit notification
+        "arg447" "[Blitzkrieg] Du är inte en betecknad hälsovapen sjukvårdare!.\nDu får använda armborsten istället."
+
+		
+		"arg501"	"de" // Deutsch
+		"arg502"	"Raketenwerfer: ; 100 Prozent größeres Magazin ; 75 Prozent schnelleres Schießen ; 50 Prozent mehr Schubkraft durch Selbstschaden ; 500 Prozent mehr Munition ; 70 Prozent Explosionsschaden von Raketensprüngen ; 10 Sekunden Minikritz wenn dein Heiler stirbt ; Kein Fallschaden ; 10 Prozent weniger Schaden ; Keine zufälligen Kritz"
+		"arg503"	"Flammenwerfer: ; 100 Prozent zusätzlichen Schaden ; 100 Prozent zusätzliche Flammenstreuung ; 150 Prozent zusätzliche Schubkraft durch Luftstöße ; 200 Prozent größere Flammenreichweite ; 70 Prozent schnelleres Waffenwechseln ; Immer Kritische Treffer von Hinten ; 75 Prozent Munitionsverbrauch pro Sekunde"
+		"arg504"	"Granatenwerfer: ; 15 Prozent Schadensbonus ; 200 Prozent größeres Magazin ; 350 Prozent mehr Munition ; 75 Prozent schnelleres Schießen ; 75 Prozent schnelleres Nachladen ; 25pct dmg penalty on contact with surfaces Prozent Schadensverlust beim aufkommen auf der Oberflaeche"
+		"arg505"	"Minigun: ; Generiert Rückstoß Wut beim verteilen von Schaden. ; Benutze Mittlere Maus / Attack3 wenn die Leiste voll ist."
+		"arg506"	"Mächtiger Detonator: ; Kritz gegen brennende Gegner ; 450 Prozent mehr Schubkraft durch Selbstschaden ; Keine kritische treffer gegen nicht brennende Gegner ; Keine zufälligen kritischen treffer"
+		"arg507"	"Medigun: ; Benutze Attack3 (Normalerweise Mittlere Maus) um ein Projektil Schild zu setzen ; Overheal Expert aktiv ; Healing Mastery aktiv ; 25 Prozent schnelleres aufladen ; 25 Prozent schnelleres Waffenwechseln ; 50 Prozent Überheilungs bonus"
+		"arg508"	"Erstellungs PDA: ; Teleporter sind in beiden Richtungen benutzbar ; 10 Metal einheiten werden regeneriert in 5 Sekunden ; 300 Prozent Dispenser reichweite ; 30 Prozent zusätzliche Erbauungsgeschwindigkeit ; 150 Prozent mehr Gebäudeleben ; Sentry schießt 25 Prozent schneller ; Sentry macht 25 Prozent mehr Schaden"
+		"arg509"	"Sandvich: ; 50 Prozent schnelleres Nachladen"
+		"arg510"	"Sandman: ; 400 Prozent mehr Munition ; 50 Prozent schnelleres Nachladen ; Attack2 / Rechter Maus button um den Ball zu schießen ; 15 Prozent mehr Maximal Leben"
+		"arg511"	"Battalion's Backup: ; 150 Prozent längere Buff zeit ; 50 Prozent mehr Leben"
+		"arg512"	"Buff Banner: ; 150 Prozent längere Buff zeit ; 50 Prozent mehr Leben"
+		"arg513"	"The Concheror: ; 150 Prozent längere Buff zeit ; 50 Prozent mehr Leben"
+		"arg514"	"Direct Hit: ; 50 Prozent mehr Schaden ; 100 Prozent schnelleres Projektil ; Schnelleres Schießen während eines Raketensprunges ; Raketen Spezialist ; Magazin vergrößert sich wenn du Schaden verteilst ; 10 Sekunden Minikritz wenn dein Heiler stirbt ; Kein Fallschaden ; In der Luft sich befindende Gegner erleiden Minikritz ; Minikritz verwandeln sich zu Kritz ; 70 Prozent Explosionsradius ; Keine zufälligen Kritz"
+		"arg515"	"Black Box: ; 50 Prozent des Normalen Magazins ; Beim Treffen gewinnst du 5 HP dazu ; 75 Prozent schnelleres Schießen ; 200 Prozent mehr Schubkraft durch Selbstschaden ; 250 Prozent mehr Munition ; 40 Prozent Explosionsschaden von Raketensprüngen ; Du machst 50 Prozent mehr Schaden so lange du geheilt wirst! ; Keine zufälligen Kritz ; 50 Prozent Explosionsradius ; 30 Prozent längeres Waffenwechseln während du nicht geheilt wirst"
+		"arg516"	"LochnLoad: ; 75 Prozent mehr Schaden ; 25 Prozent des Magazins ; 200 Prozent mehr Munition ; 75 Prozent schnelleres Schießen ; 75 Prozent schnelleres Nachladen ; Granaten zerplatzen auf der oberfläche"
+		"arg517"	"Brass Beast: ; 20 Prozent mehr Schaden ; Generiert Rückstoß Wut beim verteilen von Schaden. Benutze Mittlere Maus / Attack3 wenn die Leiste voll ist. ; 50 Prozent langsameres Aufdrehen ; 60pct Slower move speed while deployed"
+		"arg518"	"Liberty Launcher: ; 150 Prozent des Magazins ; 60 Prozent schnelleres Schießen ; 200 Prozent mehr Schubkraft durch Selbstschaden ; 250 Prozent mehr Munition ; 25 Prozent weniger Schaden ; 50 Prozent Explosionsschaden von Raketensprüngen ; 15 Prozent weniger Explosionsradius"
+		"arg519"	"Tomislav: ; 10 Prozent weniger Schaden ; 10 Prozent schnelleres aufdrehen ; Kein Geräusch wird beim aufdrehen verursacht ; Generiert Rückstoß Wut beim verteilen von Schaden. Benutze Mittlere Maus / Attack3 wenn die Leiste voll ist. ; 20 Prozent langsameres schießen"
+		"arg520"	"Cow Mangler: ; 50 Prozent mehr Schaden ; 100 Prozent mehr Schubkraft durch Selbstschaden ; Verbraucht keine Munition ; Ein treffer in der Luft betäubt den Gegner für 5 Sekunden"
+		"arg521"	"Wrap Assassin: ; 400 Prozent mehr Munition ; 50 Prozent schnelleres Nachladen ; Rechter Maus Knopf um eine Kugel zu schmeißen ; 70 Prozent weniger Schaden"
+		"arg522"	"Beggar's Bazooka: ; 10 Prozent mehr Schaden ; 650 Prozent mehr Magazin ; 85 Prozent schnelleres Schießen ; 50 Prozent mehr Schubkraft durch Selbstschaden ; 1000 Prozent mehr Munition ; 75 Prozent schnelleres Nachladen ; 75 Prozent Explosionsschaden von Raketensprüngen ; Feuerbutton gedrückt halten um bis zu 30 Raketen zu laden ; Überladen verursacht Fehlschießen ; 30 Grad Zufalls Projektil Abweichung"
+		"arg523"	"HuoLong Heater: ; 10 Prozent mehr Munition ; 25 Prozent mehr Schaden des Nachbrennens ; Erzeugt ein Ring aus Feuer während es aktiv ist ; Generiert Rückstoß Wut beim verteilen von Schaden. Benutze Mittlere Maus / Attack3 wenn die Leiste voll ist. ; Verbraucht 5 Munitionseinheiten während es aktiv ist ; 25 Prozent mehr Schaden durch Nahkampfwaffen während es aktiv ist"
+		"arg524"	"Loose Cannon: ; 25 Prozent mehr Schaden ; 50 Prozent größeres Magazin ; 300 Prozent mehr Munition ; 75 Prozent schnelleres Schießen ; 75 Prozent schnelleres Nachladen ; 30 Prozent weniger Schaden wenn es vorher auf den Boden aufkommt ; Kannonenbälle haben eine Laufzeit von einer Sekunde. Die laufzeit kann bestimmt werden um die Explosion früher zu aktivieren. Benutze den Feuerknopf dafür ; Kannonenbälle explodieren nicht beim aufprall"
+		"arg525"	"Air Strike: ; Schnelleres Schießen während eines Raketensprunges ; Raketen Spezialist ; Magazin vergrößert sich wenn du Schaden verteilst ; 10 Sekunden Minikritz wenn dein Heiler stirbt ; Kein Fallschaden ; 10 Prozent weniger Schaden ; Keine zufälligen Kritz"
+		"arg526"	"Panic Attack (während es aktiv ist): ; 75 Prozent schnelleres Laufen ; 34 Prozent schnelleres Nachladen ; 15 Sekunden Minikritz wenn dein Heiler stirbt ; 50 Prozent mehr Schaden durch Explosion, Feuer und Kritz ; Feuerknopf drücken um bis zu 6 Schüsse zu laden ; Feuerschnelligkeit steigt wenn die Gesundheit sinkt ; Waffenstreuung steigt wenn die Gesundheit sinkt"
+		"arg527"	"Iron Bomber: ; 10 Prozent mehr Schaden ; 400 Prozent größeres Magazin ; 500 Prozent mehr Munition ; 75 Prozent schnelleres Schießen ; 75 Prozent schnelleres Nachladen ; 40 Prozent weniger Schaden von Granaten die auf Zeit explodieren ; Granaten rollen und springen sehr wenig"
+		"arg528"	"Schwierigkeit: %s"											
+		"arg529"	"Schwierigkeit: %s\nRevives: %i of %i" 							
+		"arg530"	"Schwierigkeit: %s"										
+		"arg531"	"Einfach"											
+		"arg532"	"Normal"													
+		"arg533"	"Durchschnittlich"												
+		"arg534"	"Schwierig"											
+		"arg535"	"Lunatic"														
+		"arg536"	"Verrückt"												
+		"arg537"	"Goettlich"											
+		"arg538" 	"Raketen Hölle"												 
+		"arg539" 	"Totaler Blitzkrieg"								
+		"arg540" 	"RNG Level: %i"											
+		"arg541"	"Nächste Welle in: %s"							
+		"arg542" 	"Welle: %i of %i\nNächste Welle in: %s"						
+		"arg543"	"Du musst dich auf deine Raketen verlassen um deine Gegner zu besiegen!"		
+		"arg544"	"Benutze deine Nahkampfwaffe um nahstehende Gegner zu besiegen!"
+		"arg545"	"[Blitzkrieg] Du wurdest zufaellig als ein Armbrust Medic ausgewaehlt.\nKeine Sorge, deine Armbrust ist sehr stark."
+		"arg546"	"[Blitzkrieg] Das Limit fuer Medigun Medics liegt in dieser Runde bei %d."
+		"arg547"	"[Blitzkrieg] Du wurdest nicht als Medigun Medic ausgewaehlt.\nDu wirst stattdessen die Armbrust benutzen"
+		"arg548" 	"[Blitzkrieg] %N hat insgesamt %i mal Gewonnen, %i mal Verloren, hat %i kills und %i tode!"// Boss Stats - round end
+		"arg549" 	"[Blitzkrieg] Du hast insgesamt %i mal Gewonnen, %i mal Verloren, hast %i kills und %i tode!"// Boss Stats - round end (as boss)
+		"arg550" 	"Wiederbelebt: %i"// Revive counter - Spectator
+		"arg551" 	"Wiederbelebungen: %i - %N's Wiederbelebt: %i"// Revive counter - Spectating player
+		"arg552" 	"%N's Statistiken - Gewonnen: %i | Verloren: %i | Kills: %i | Tode: %i"// Stats - Spectating boss
+		"arg553" 	"Gewonnen: %i | Verloren: %i | Kills: %i | Tode: %i"// Stats - Boss HUD
+		"arg554" 	"Du kannst nicht mehr Wiederbelebt werden!"// Revive limit exceeded
+
+	}
+	
+	// models, sounds, whatever come later
+	"sound_blitz_soldiermode"
+	{
+		"1" "vo/soldier_mvm_resurrect03.mp3"
+		"2" "vo/soldier_mvm_resurrect05.mp3"
+		"3" "vo/soldier_mvm_resurrect06.mp3"
+	}
+	"sound_blitz_medicmode"
+	{
+		"1" "vo/medic_mvm_resurrect01.mp3"
+		"2" "vo/medic_mvm_resurrect02.mp3"
+		"3" "vo/medic_mvm_resurrect03.mp3"
+	}
+	"sound_blitz_medicrage"
+	{
+		"1" "vo/medic_mvm_heal_shield02.mp3"
+		"2" "vo/medic_positivevocalization05.mp3"
+		"3" "vo/taunts/medic_taunts08.mp3"
+	}
+	"sound_blitz_soldierrage"
+	{
+		"1" "vo/taunts/soldier_taunts16.mp3"
+		"2" "vo/taunts/soldier_taunts05.mp3"
+		"3" "vo/taunts/soldier_taunts21.mp3"
+	}	
+	"sound_blitz_countdown_reset"
+	{
+		"1" "misc/halloween/strongman_bell_01.wav"
+	}
+	"sound_blitz_countdown_tick"
+	{
+		"1" "misc/halloween/clock_tick.wav"
+	}	
+	"sound_intromusic"
+	{
+		"1" "freak_fortress_2/s93dm/dm_start.mp3"
+	}
+	"sound_outtromusic"
+	{
+		"1" "freak_fortress_2/s93dm/dm_end.mp3"
+	}
+	"sound_begin"
+	{
+		"1" "freak_fortress_2/s93dm/dm_start1.mp3"
+		"2" "freak_fortress_2/s93dm/dm_start2.mp3"
+		"3" "freak_fortress_2/s93dm/dm_start3.mp3"
+		"4" "freak_fortress_2/s93dm/dm_start4.mp3"
+		"5" "vo/taunts/medic_taunts07.mp3"
+		"6" "vo/soldier_mvm_ask_ready03.mp3"
+		"7" "vo/taunts/medic/medic_taunt_int_15.mp3"
+		"8" "vo/soldier_dominationsniper13.mp3"
+	}	
+	"sound_win"
+	{
+		"1"		"freak_fortress_2/s93dm/dm_victory1.mp3"
+		"2"		"freak_fortress_2/s93dm/dm_victory2.mp3"
+		"3"		"vo/soldier_dominationmedic04.mp3"
+		"4"		"freak_fortress_2/s93dm/dm_victory3.mp3"
+		"5"		"vo/soldier_dominationsniper12.mp3"
+		"6" 	"vo/taunts/medic/medic_taunt_admire_13.mp3"
+		"7"		"vo/soldier_item_wizard_domination01.mp3"
+		"8"		"vo/taunts/medic/medic_taunt_kill_27.mp3"
+		"9"		"vo/soldier_item_wizard_domination02.mp3"
+	}
+	"sound_death"
+	{
+		"1"	"vo/medic_sf12_falling01.mp3"
+		"2"	"vo/soldier_negativevocalization02.mp3"
+		"3"	"vo/medic_jeers02.mp3"
+		"4" "vo/soldier_negativevocalization05.mp3"
+		"5"	"vo/taunts/medic/medic_taunt_rps_lose_16.mp3"
+	}
+	"sound_fail"
+	{
+		"1" "vo/medic_sf12_badmagic10.mp3"
+		"2" "vo/medic_jeers08.mp3"
+		"3" "vo/medic_autodejectedtie01.mp3"
+		"4" "vo/medic_autodejectedtie02.mp3"
+		"5" "vo/soldier_autodejectedtie02.mp3"
+		"6" "vo/soldier_jeers03.mp3"
+		"7" "vo/soldier_jeers06.mp3"
+		"8" "vo/soldier_jeers10.mp3"
+	}
+	"sound_ability"
+	{
+		"1"	 "vo/medic_laughhappy01.mp3"
+		"slot1" "1"
+		"2"	 "vo/medic_laughhappy02.mp3"
+		"slot2" "1"
+		"3"	 "vo/medic_laughhappy03.mp3"
+		"slot3" "1"
+		"4"	 "vo/medic_laughevil05.mp3"
+		"slot4" "1"
+		"5"	 "vo/soldier_laughevil01.mp3"
+		"slot5"	"1"
+		"6"	 "vo/soldier_laughevil02.mp3"
+		"slot6"	"1"
+		"7"	 "vo/soldier_laughlong01.mp3"
+		"slot7"	"1"
+		"8"	 "vo/soldier_positivevocalization01.mp3"
+		"slot8" "1"
+	}
+	"sound_kill_buildable"
+	{
+		"1" "vo/soldier_kaboomalts01.mp3"
+		"2" "vo/soldier_kaboomalts02.mp3"
+		"3" "vo/soldier_kaboomalts03.mp3"
+	}
+	"sound_kspree"
+	{
+		"1" "vo/medic_weapon_taunts01.mp3"
+		"2" "vo/soldier_weapon_taunts01.mp3"
+		"3" "vo/medic_weapon_taunts02.mp3"
+		"4" "vo/soldier_weapon_taunts02.mp3"
+		"5" "vo/medic_weapon_taunts03.mp3"
+		"6" "vo/soldier_weapon_taunts03.mp3"	
+		"7" "vo/medic_hat_taunts01.mp3"
+		"8" "vo/soldier_weapon_taunts04.mp3"
+		"9" "vo/medic_hat_taunts02.mp3"
+		"10" "vo/soldier_weapon_taunts05.mp3"
+		"11" "vo/medic_hat_taunts03.mp3"
+		"12" "vo/soldier_hat_taunts14.mp3"
+		"13" "vo/medic_hat_taunts04.mp3"
+		"14" "vo/soldier_hat_taunts15.mp3"
+		"15" "vo/medic_item_secop_idle01.mp3"
+		"16" "vo/soldier_hat_taunts16.mp3"
+		"17" "vo/medic_item_secop_idle02.mp3"
+		"18" "vo/soldier_hat_taunts17.mp3"
+		"19" "vo/medic_item_secop_idle03.mp3"
+		"20" "vo/soldier_hat_taunts18.mp3"
+		"21" "vo/taunts/medic/medic_taunt_cong_fun_08.mp3"
+		"22" "vo/soldier_hat_taunts19.mp3"
+		"23" "vo/taunts/medic/medic_taunt_cong_fun_09.mp3"
+		"24" "vo/soldier_dominationpyro07.mp3"
+	}
+	"sound_kill_demoman"
+	{
+		"1"	"vo/soldier_item_unicorn_domination01.mp3"
+		"2" "vo/soldier_hatoverhearttaunt06.mp3"
+	}
+	"sound_kill_engineer"
+	{
+		"1" "vo/soldier_dominationengineer03.mp3"
+	}
+	"sound_kill_spy"
+	{
+		"1" "vo/taunts/medic_taunts12.mp3"
+	}
+	"sound_kill_medic"
+	{
+		"1" "vo/medic_sf13_influx_big03.mp3"
+	}
+	"sound_lastman"
+	{
+		"1"	"freak_fortress_2/s93dm/dm_lastman1.mp3"
+		"2" "freak_fortress_2/s93dm/dm_lastman2.mp3"
+		"3" "freak_fortress_2/s93dm/dm_lastman3.mp3"
+		"4" "freak_fortress_2/s93dm/dm_lastman4.mp3"
+		"5"	"vo/Medic_sf13_influx_big03.mp3"
+		"6" "vo/taunts/soldier/soldier_taunt_kill_10.mp3"
+		"7" "vo/taunts/medic_taunt_kill_08.mp3"
+		"8" "vo/taunts/soldier_taunts14.mp3"
+	}
+	"sound_stabbed"
+	{
+		"1"	 "vo/taunts/medic/Medic_taunt_rps_lose_19.mp3"
+		"2"	 "vo/taunts/soldier/soldier_taunt_rps_lose_14.mp3"
+		"3"	 "vo/taunts/medic/Medic_taunt_rps_lose_17.mp3"
+		"4"	 "vo/taunts/soldier/soldier_taunt_head_pain_02.mp3"
+		"5"	 "vo/taunts/medic/Medic_taunt_head_end_20.mp3"
+		"6"	 "vo/taunts/soldier/soldier_taunt_head_pain_13.mp3"
+	}
+	"sound_full_rage"
+	{
+		"1"	"vo/taunts/soldier_taunts15.mp3"
+		"2"	"vo/taunts/soldier_taunts06.mp3"
+		"3" "vo/taunts/medic_taunts10.mp3"
+		"4" "vo/taunts/medic_taunts02.mp3"
+	}
+	"sound_precache"
+	{
+		"1"	"freak_fortress_2/s93dm/dm_start.mp3"
+		"2" "freak_fortress_2/s93dm/dm_loop1.mp3"
+		"3" "freak_fortress_2/s93dm/dm_end.mp3"
+	}	
+	"sound_bgm"
+	{
+		"path1"	"freak_fortress_2/s93dm/dm_loop1.mp3"
+		"time1"	"356.25"
+	}
+	"mod_download"
+	{
+		"1"	"models/freak_fortress_2/shadow93/dmedic/d_medic"
+		"2"	"models/freak_fortress_2/shadow93/dmedic/d_soldier"
+		"3" "models/freak_fortress_2/shadow93/dmedic/rocket"
+	}
+	"mod_precache"
+	{
+		"1"	"models/freak_fortress_2/shadow93/dmedic/d_medic.mdl"
+		"2"	"models/freak_fortress_2/shadow93/dmedic/d_soldier.mdl"
+		"3" "models/freak_fortress_2/shadow93/dmedic/rocket.mdl"
+	}	
+	"mat_download"
+	{
+		"1"	"materials/freak_fortress_2/shadow93/dmedic/medic_red"
+		"2"	"materials/freak_fortress_2/shadow93/dmedic/medic_head_red"
+	}
+	"download"
+	{
+		// BGM Stuff
+		"1" "sound/freak_fortress_2/s93dm/dm_start.mp3"
+		"2" "sound/freak_fortress_2/s93dm/dm_loop1.mp3"
+		"3" "sound/freak_fortress_2/s93dm/dm_end.mp3"
+		
+		// Novelty Level Sounds
+		"4" "sound/freak_fortress_2/s93dm/dm_playerdeath.mp3"
+		"5" "sound/freak_fortress_2/s93dm/dm_w33d.mp3"
+		"6" "sound/freak_fortress_2/s93dm/dm_l33t.mp3"	
+		"7" "sound/freak_fortress_2/s93dm/dm_donut.mp3"
+		"8" "sound/freak_fortress_2/s93dm/dm_ravioli.mp3"
+
+		// Voices
+		"9" "sound/freak_fortress_2/s93dm/dm_start1.mp3"
+		"10" "sound/freak_fortress_2/s93dm/dm_start2.mp3"
+		"11" "sound/freak_fortress_2/s93dm/dm_start3.mp3"
+		"12" "sound/freak_fortress_2/s93dm/dm_start4.mp3"
+		"13" "sound/freak_fortress_2/s93dm/dm_victory1.mp3"
+		"14" "sound/freak_fortress_2/s93dm/dm_victory2.mp3"
+		"15" "sound/freak_fortress_2/s93dm/dm_victory3.mp3"
+		"16" "sound/freak_fortress_2/s93dm/dm_lastman1.mp3"
+		"17" "sound/freak_fortress_2/s93dm/dm_lastman2.mp3"
+		"18" "sound/freak_fortress_2/s93dm/dm_lastman3.mp3"
+		"19" "sound/freak_fortress_2/s93dm/dm_lastman4.mp3"
+		
+		// Materials
+		"20"	"materials/freak_fortress_2/shadow93/dmedic/eyeball_invun.vmt"
+		"21"	"materials/freak_fortress_2/shadow93/dmedic/eyeball_l.vmt"
+		"22"	"materials/freak_fortress_2/shadow93/dmedic/eyeball_r.vmt"
+		"23"	"materials/freak_fortress_2/shadow93/dmedic/invulnfx_red.vmt"
+		"24"	"materials/freak_fortress_2/shadow93/dmedic/medic_backpack_red.vmt"
+		"25"	"materials/freak_fortress_2/shadow93/dmedic/medic_head_red_invun.vmt"
+		"26"	"materials/freak_fortress_2/shadow93/dmedic/medic_red_invun.vmt"
+		"27"	"models/freak_fortress_2/shadow93/dmedic/d_medic.phy"
+		"28"	"models/freak_fortress_2/shadow93/dmedic/d_soldier.phy"
+	}
+}
