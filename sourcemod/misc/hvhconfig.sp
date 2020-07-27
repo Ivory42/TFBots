@@ -192,19 +192,19 @@ public Action:CommandIgnore(int client, int args)
 	return Plugin_Handled;
 }
 
-ToggleIgnore(int client, int initiator)
+ToggleIgnore(int client, int initiator) //Allows ignoring specific clients
 {
 		new String:name[32];
 		GetClientName(client, name, sizeof(name));
 		if (IgnoreClient[client])
 		{
-				IgnoreClient[client] = false;
-				PrintToChat(initiator, "Client %s will not be ignored", name);
+			IgnoreClient[client] = false;
+			PrintToChat(initiator, "Client %s will not be ignored", name);
 		}
 		else if (!IgnoreClient[client])
 		{
-				IgnoreClient[client] = true;
-				PrintToChat(initiator, "Client %s will be ignored", name);
+			IgnoreClient[client] = true;
+			PrintToChat(initiator, "Client %s will be ignored", name);
 		}
 }
 
@@ -319,6 +319,15 @@ public int MenuHVH(Menu menu, MenuAction action, int param1, int param2)
 	return 0;
 }
 
+/*
+------------------------------------------------------------------
+The homing projectiles have multiple settings                    -
+Visible - Tracks the nearest target visible to the player        -
+Projectile - Tracks the closest target visible to the projectile -
+Aim - Projectliles track the player's aim                        -
+------------------------------------------------------------------
+*/
+
 public Action:Menu_Homing(int client)
 {
 	Menu hvh = new Menu(MenuProjectiles, MENU_ACTIONS_ALL);
@@ -326,13 +335,13 @@ public Action:Menu_Homing(int client)
 
 	switch (ProjectileType[client])
 	{
-			case 0: hvh.AddItem("home", "Homing Behavior: Disabled");
-			case 1: hvh.AddItem("home", "Homing Behavior: Visible");
-			case 2: hvh.AddItem("home", "Homing Behavior: Projectile");
-			case 3: hvh.AddItem("home", "Homing Behavior: Aim");
+		case 0: hvh.AddItem("home", "Homing Behavior: Disabled");
+		case 1: hvh.AddItem("home", "Homing Behavior: Visible");
+		case 2: hvh.AddItem("home", "Homing Behavior: Projectile");
+		case 3: hvh.AddItem("home", "Homing Behavior: Aim");
 	}
 
-	hvh.AddItem("lead", "Projectile Prediction: Off");
+	hvh.AddItem("lead", "Projectile Prediction: Off"); //Still not sure how to properly configure this
 
 	hvh.AddItem("exit", "Back");
 	hvh.ExitButton = false;
@@ -351,13 +360,13 @@ public int MenuProjectiles(Menu menu, MenuAction action, int param1, int param2)
 			menu.GetItem(param2, info, sizeof(info));
 			if (StrEqual(info, "home"))
 			{
-					ToggleHR(param1);
-					Menu_Homing(param1);
+				ToggleHR(param1);
+				Menu_Homing(param1);
 			}
 			if (StrEqual(info, "lead"))
 			{
-					PrintToChat(param1, "Currently unavailable");
-					Menu_Homing(param1);
+				PrintToChat(param1, "Currently unavailable");
+				Menu_Homing(param1);
 			}
 			if (StrEqual(info, "exit"))
 			{
@@ -383,29 +392,29 @@ public int MenuProjectiles(Menu menu, MenuAction action, int param1, int param2)
 }
 ToggleHR(int client)
 {
-		switch (ProjectileType[client])
+	switch (ProjectileType[client])
+	{
+		case 0:
 		{
-				case 0:
-				{
-						ProjectileType[client] = 1;
-						PrintToChat(client, "Projectiles will target the nearest visible player");
-				}
-				case 1:
-				{
-						ProjectileType[client] = 2;
-						PrintToChat(client, "Projectiles will seek the nearest player, regardless of visibility");
-				}
-				case 2:
-				{
-						ProjectileType[client] = 3;
-						PrintToChat(client, "Projectiles will target your view angle");
-				}
-				case 3:
-				{
-						ProjectileType[client] = 0;
-						PrintToChat(client, "Homing Projectiles Disabled");
-				}
+			ProjectileType[client] = 1;
+			PrintToChat(client, "Projectiles will target the nearest visible player");
 		}
+		case 1:
+		{
+			ProjectileType[client] = 2;
+			PrintToChat(client, "Projectiles will seek the nearest player, regardless of visibility");
+		}
+		case 2:
+		{
+			ProjectileType[client] = 3;
+			PrintToChat(client, "Projectiles will target your view angle");
+		}
+		case 3:
+		{
+			ProjectileType[client] = 0;
+			PrintToChat(client, "Homing Projectiles Disabled");
+		}
+	}
 }
 
 ToggleBot(int client)
@@ -441,13 +450,13 @@ ToggleStab(int client)
 	if (RageStab[client])
 	{
 		RageStab[client] = false;
-		TF2Attrib_RemoveByName(client, "melee range multiplier");
+		//TF2Attrib_RemoveByName(client, "melee range multiplier");
 		PrintToChat(client, "Rage Backstab disabled.");
 	}
 	else if (!RageStab[client])
 	{
 		RageStab[client] = true;
-		TF2Attrib_SetByName(client, "melee range multiplier", 4.1);
+		//TF2Attrib_SetByName(client, "melee range multiplier", 4.1);
 		PrintToChat(client, "Rage Backstab enabled.");
 	}
 }
@@ -502,12 +511,12 @@ public OnGameFrame()
 		{
 			if (RadarEnabled[i])
 			{
-					RadarTick(i);
+				RadarTick(i);
 			}
 			//RadarTick(i);
 			if (TF2_GetPlayerClass(i) == TFClass_Spy && IsWeaponSlotActive(i, 2) && RageStab[i])
 			{
-					CheckBackstab(i);
+				CheckBackstab(i);
 			}
 		}
 		if(ProjectileType[i] >= 1)
@@ -522,6 +531,14 @@ public OnGameFrame()
 		}
 	}
 }
+
+/*
+-----------------------------------------------------
+Radar is still a WiP                                -
+Displays nearest player class, HP, and name         -
+Provides distance between you and the nearest player-
+-----------------------------------------------------
+*/
 
 RadarTick(int client)
 {
@@ -650,6 +667,16 @@ public bool:FilterAim(int entity, int contentsMask, int client)
 	return true;
 }
 
+/*
+-----------------------------------------------------------------------------
+Settings for silent aim														-
+The player's view angles are NOT changed at all in this setup				-
+Instead, a line trace is created between the player and the nearest target	-
+This is completely undetectable from spectators								-
+Walls will block these line traces unless 'Ignore Walls' is disabled		-
+-----------------------------------------------------------------------------
+*/
+
 public Action TF2_CalcIsAttackCritical(int client, int weapon, char[] weaponname, bool& result)
 {
 	if (CanKill[client])
@@ -665,21 +692,21 @@ public Action TF2_CalcIsAttackCritical(int client, int weapon, char[] weaponname
 
 		if (IsWeaponSlotActive(client, 0) && TF2_GetPlayerClass(client) == TFClass_Sniper)
 		{
-			float charge2 = GetEntPropFloat(weapon, Prop_Send, "m_flChargedDamage");
+			float charge2 = GetEntPropFloat(weapon, Prop_Send, "m_flChargedDamage"); //Normally the damage dealt will not scale based on a sniper's charge, this fixes that
 			float damagemod;
 			if (charge2 <= 20.0)
 			{
-					damagemod = 1.0;
+				damagemod = 1.0; // 13.3% of charge or less has no scale
 			}
 			else if (20.0 < charge2 < 150.0)
 			{
-					damagemod = 1.0+(charge2/100.0);
+				damagemod = 1.0+(charge2/100.0);
 			}
 			else if (charge2 >= 150.0)
 			{
-					damagemod = 3.0;
+				damagemod = 3.0; // 100% charge will always deal 3x damage
 			}
-			if (ChancedHit[client])
+			if (ChancedHit[client]) // handles whether the aimbot is fully accurate or has a chance to miss
 			{
 				int hitchance = GetRandomInt(1, 10);
 				if (hitchance <= 9)
@@ -687,11 +714,11 @@ public Action TF2_CalcIsAttackCritical(int client, int weapon, char[] weaponname
 					int critchance = GetRandomInt(1, 10);
 					if (critchance <= 6)
 					{
-						TraceAttack(client, target, 55.0*damagemod, true);
+						TraceAttack(client, target, 55.0*damagemod, true); //headshot
 					}
 					else
 					{
-						TraceAttack(client, target, 100.0*damagemod, false);
+						TraceAttack(client, target, 100.0*damagemod, false); //no headshot
 					}
 				}
 			}
@@ -912,7 +939,7 @@ public Action:Event_PlayerDeath(Handle:event, const String:name[], bool:dontBroa
 	new client = GetClientOfUserId(GetEventInt(event, "userid"));
 	//new inflictor = GetEventInt(event, "inflictor_entindex");
 
-	if (CanKill[attacker] && IsClosest[client])
+	if (CanKill[attacker] && IsClosest[client]) //Forces headshot
 	{
 		SetEventInt(event, "customkill", 1);
 		IsClosest[client] = false;
@@ -921,12 +948,12 @@ public Action:Event_PlayerDeath(Handle:event, const String:name[], bool:dontBroa
 
 	if (CanBackstab[attacker])
 	{
-			SetEventInt(event, "customkill", TF_CUSTOM_BACKSTAB);
+			SetEventInt(event, "customkill", TF_CUSTOM_BACKSTAB); //Forces the kill to be a backstab
 			return Plugin_Changed;
 	}
 	if (HeadshotOnly[attacker])
 	{
-			SetEventInt(event, "customkill", 1);
+			SetEventInt(event, "customkill", 1); //Forces kill to be a headshot for bots
 			if (IsFakeClient(attacker))
 				HeadshotOnly[attacker] = false;
 			return Plugin_Changed;
@@ -950,7 +977,7 @@ public Action:OnTakeDamage(client, &attacker, &inflictor, &Float:damage, &damage
 		if (!IsValidClient(attacker))
 				return Plugin_Continue;
 
-		if (IsFakeClient(attacker))
+		if (IsFakeClient(attacker)) //Settings for bots
 		{
 				if (TF2_GetPlayerClass(attacker) == TFClass_Sniper && IsWeaponSlotActive(attacker, 0))
 				{
@@ -963,18 +990,18 @@ public Action:OnTakeDamage(client, &attacker, &inflictor, &Float:damage, &damage
 				}
 		}
 
-		if (CanBackstab[attacker])
+		if (CanBackstab[attacker]) //Sets all damage to deal backstab damage
 		{
 				damagetype = DMG_CRIT;
 				damage = (float(GetClientHealth(client))*6.0)/3.0;
 				//CanBackstab[attacker] = false;
 				return Plugin_Changed;
 		}
-		if (HeadshotOnly[attacker])
+		if (HeadshotOnly[attacker]) //sets all damage to deal crit damage
 		{
 				if (TF2_GetPlayerClass(attacker) == TFClass_Sniper)
 				{
-						damagetype = DMG_CRIT;
+					damagetype = DMG_CRIT;
 				}
 				return Plugin_Changed;
 		}
