@@ -19,11 +19,16 @@ new bool:IgnoreClient[MAXPLAYERS+1] = false;
 new bool:RageStab[MAXPLAYERS+1] = false;
 new bool:CanBackstab[MAXPLAYERS+1] = false;
 new bool:RadarEnabled[MAXPLAYERS+1] = false;
+new bool:ProjPrediction[MAXPLAYERS+1] = false;
 float closestdist[MAXPLAYERS+1] = 0.0;
 int ProjectileType[MAXPLAYERS+1] = 0;
+new bool:CanLead[MAXPLAYERS+1] = false;
+float LeadDelay[2048] = 99999.0;
 //int Self[MAXPLAYERS+1];
 int ClosestPlayer[MAXPLAYERS+1];
 float NearestPlayer = 9999.0;
+
+new Sprite;
 
 new Handle:radarhud;
 
@@ -42,6 +47,7 @@ public OnPluginStart()
 	RegAdminCmd("sm_ignoreclient", CommandIgnore, ADMFLAG_ROOT);
 	//RegAdminCmd("sm_togglechance", CommandCheckChance, ADMFLAG_ROOT);
 	HookEvent("player_death", Event_PlayerDeath, EventHookMode_Pre);
+	Sprite = PrecacheModel("materials/sprites/blueglow2.vmt");
 
 	radarhud = CreateHudSynchronizer();
 
@@ -70,6 +76,7 @@ public void OnMapStart()
 		CanBackstab[i] = false;
 		RadarEnabled[i] = false;
 		closestdist[i] = 0.0;
+		ProjPrediction[i] = false;
 	}
 }
 
@@ -86,6 +93,7 @@ public OnClientDisconnect(int client)
 	CanBackstab[client] = false;
 	RadarEnabled[client] = false;
 	closestdist[client] = 0.0;
+	ProjPrediction[client] = false;
 }
 
 public OnClientPutInServer(int client)
@@ -101,6 +109,7 @@ public OnClientPutInServer(int client)
 	CanBackstab[client] = false;
 	RadarEnabled[client] = false;
 	closestdist[client] = 0.0;
+	ProjPrediction[client] = false;
 	SDKHook(client, SDKHook_OnTakeDamage, OnTakeDamage);
 }
 
@@ -246,7 +255,7 @@ public Action:Menu_Config(int client)
 	else
 		hvh.AddItem("stab", "Auto Backstab: Off");
 
-	hvh.AddItem("rocket", "Homing Config");
+	hvh.AddItem("rocket", "Projectile Config");
 
 	hvh.ExitButton = false;
 	hvh.Display(client, 60);
@@ -340,8 +349,10 @@ public Action:Menu_Homing(int client)
 		case 2: hvh.AddItem("home", "Homing Behavior: Projectile");
 		case 3: hvh.AddItem("home", "Homing Behavior: Aim");
 	}
-
-	hvh.AddItem("lead", "Projectile Prediction: Off"); //Still not sure how to properly configure this
+	if (ProjPrediction[client])
+		hvh.AddItem("lead", "Projectile Prediction: On");
+	else
+		hvh.AddItem("lead", "Projectile Prediction: Off");
 
 	hvh.AddItem("exit", "Back");
 	hvh.ExitButton = false;
@@ -365,7 +376,7 @@ public int MenuProjectiles(Menu menu, MenuAction action, int param1, int param2)
 			}
 			if (StrEqual(info, "lead"))
 			{
-				PrintToChat(param1, "Currently unavailable");
+				ToggleProjPred(param1);
 				Menu_Homing(param1);
 			}
 			if (StrEqual(info, "exit"))
@@ -417,6 +428,40 @@ ToggleHR(int client)
 	}
 }
 
+ToggleProjPred(int client)
+{
+	if (ProjPrediction[client])
+	{
+		PrintToChat(client, "Disabled Projectile Prediction");
+		ProjPrediction[client] = false;
+	}
+	else if (!ProjPrediction[client])
+	{
+		PrintToChat(client, "Enabled Projectile Prediction");
+		ProjPrediction[client] = true;
+	}
+}
+
+public void OnEntityCreated(int proj, const char[] classname)
+{
+	if (StrContains(classname, "tf_projectile", false) != -1)
+	{
+		SDKHook(proj, SDKHook_SpawnPost, ProjectileSpawned);
+	}
+}
+
+public ProjectileSpawned(int entity)
+{
+	new owner = GetEntPropEnt(entity, Prop_Data, "m_hOwnerEntity");
+	if (IsValidClient(owner) && ProjPrediction[owner])
+	{
+		PrintToChat(owner, "Projectile");
+		CanLead[owner] = true;
+		LeadDelay[entity] = GetEngineTime()+0.05;
+	}
+}
+
+
 ToggleBot(int client)
 {
 	if (CanKill[client])
@@ -450,13 +495,15 @@ ToggleStab(int client)
 	if (RageStab[client])
 	{
 		RageStab[client] = false;
-		//TF2Attrib_RemoveByName(client, "melee range multiplier");
+		int weapon = GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon");
+		TF2Attrib_RemoveByName(weapon, "melee range multiplier");
 		PrintToChat(client, "Rage Backstab disabled.");
 	}
 	else if (!RageStab[client])
 	{
 		RageStab[client] = true;
-		//TF2Attrib_SetByName(client, "melee range multiplier", 4.1);
+		int weapon = GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon");
+		TF2Attrib_SetByName(weapon, "melee range multiplier", 15.1);
 		PrintToChat(client, "Rage Backstab enabled.");
 	}
 }
@@ -529,6 +576,11 @@ public OnGameFrame()
 			SetHomingProjectile(i, "tf_projectile_sentryrocket");
 			SetHomingProjectile(i, "tf_projectile_syringe");
 		}
+		if (ProjPrediction[i])
+		{
+			TryPredictPosition(i, "tf_projectile_rocket");
+			ShowPredictionLoc(i);
+		}
 	}
 }
 
@@ -581,8 +633,66 @@ ClosestPlayerInfo(int client, float distance, int target)
 		case TFClass_Spy: classname = "Spy";
 		default: classname = "N/A";
 	}
-	
+
 	ShowSyncHudText(client, radarhud, "Closest Player: %s\nDistance: %.1f\nClass: %s", name, distance, classname);
+}
+
+ShowPredictionLoc(int client)
+{
+	int weapon = GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon");
+	switch (weapon)
+	{
+		//
+	}
+}
+
+TryPredictPosition(int client, const String:classname[])
+{
+	new entity = -1;
+	new Target = -1;
+	while((entity = FindEntityByClassname(entity, classname))!=INVALID_ENT_REFERENCE)
+	{
+		new owner = GetEntPropEnt(entity, Prop_Data, "m_hOwnerEntity");
+		if(!IsValidEntity(owner)) continue;
+		Target = SelectBestTarget(client);
+		if(!Target || !IsValidClient(Target)) continue;
+		if(owner == client && Target != client)
+		{
+			if (!CanLead[client] || !ProjPrediction[client])
+				return;
+
+			new Float:ProjLocation[3], Float:ProjVector[3], Float:ProjSpeed, Float:ProjAngle[3], Float:TargetLocation[3], Float:AimVector[3], Float:vAngles[3], Float:flDistance, Float:flAngleFactor, Float:TargetVelocity[3];
+			if (Target == owner) return;
+			PrintToChat(owner, "Target: %i", Target);
+			GetEntPropVector(entity, Prop_Data, "m_vecAbsOrigin", ProjLocation);
+			GetClientAbsOrigin(Target, TargetLocation);
+			GetEntPropVector(entity, Prop_Data, "m_vecAbsVelocity", ProjVector);
+			GetEntPropVector(Target, Prop_Data, "m_vecAbsVelocity", TargetVelocity);
+			ProjSpeed = GetVectorLength(ProjVector);
+			flDistance = GetVectorDistance(ProjLocation, TargetLocation);
+			flAngleFactor = flDistance / ProjSpeed;
+			for (new axis = 0; axis < 3; axis++)
+			{
+					TargetLocation[axis]+= TargetVelocity[axis]*flAngleFactor;
+			}
+			TE_SetupGlowSprite(TargetLocation, Sprite, 0.02, 2.0, 60);
+			TE_SendToClient(owner);
+			PrintToChat(owner, "Distance: %.1f\nVelocity: %.1f\nAngleFactor: %.1f", flDistance, ProjSpeed, flAngleFactor);
+
+			MakeVectorFromPoints(ProjLocation, TargetLocation , AimVector);
+			//AddVectors(ProjVector, AimVector, ProjVector);
+			NormalizeVector(AimVector, AimVector);
+			GetEntPropVector(entity, Prop_Data, "m_angRotation", ProjAngle);
+			GetVectorAngles(AimVector, ProjAngle);
+			SetEntPropVector(entity, Prop_Data, "m_angRotation", ProjAngle);
+			GetClientEyeAngles(owner, vAngles);
+			ScaleVector(AimVector, ProjSpeed);
+			SetEntPropVector(entity, Prop_Data, "m_vecAbsVelocity", AimVector);
+			TeleportEntity(entity, NULL_VECTOR, ProjAngle, AimVector);
+			if (LeadDelay[entity] <= GetEngineTime())
+				CanLead[client] = false;
+		}
+	}
 }
 
 SetHomingProjectile(client, const String:classname[])
@@ -815,7 +925,7 @@ CheckBackstab(int client)
 		{
 			GetClientAbsOrigin(target, targetpos);
 			float distance = GetVectorDistance(startingpos, targetpos);
-			if (distance <= 200.0)
+			if (distance <= 800.0)
 			{
 				SetEntData(Knife, ReadyOffset, 1);
 				if (!CanBackstab[client])
@@ -1021,7 +1131,7 @@ bool:IsValidClient(iClient)
 	return true;
 }
 
-int SelectBestTarget(int client)
+int SelectBestTarget(int client) //Closest Target to client
 {
 		float flMyPos[3]; flMyPos = GetEyePosition(client);
 		int target = INVALID_ENT_REFERENCE;
@@ -1079,7 +1189,7 @@ int SelectBestTarget(int client)
 				return client;
 }
 
-GetClosestTarget(entity, owner)
+GetClosestTarget(int entity, int owner) //Closest Target to entity
 {
 	new Float:TargetDistance = 0.0;
 	new ClosestTarget = 0;
@@ -1160,4 +1270,19 @@ stock int GetEnemyTeam(int ent)
 	}
 
 	return enemy_team;
+}
+
+stock GetWeaponIndex(iWeapon)
+{
+    return IsValidEnt(iWeapon) ? GetEntProp(iWeapon, Prop_Send, "m_iItemDefinitionIndex"):-1;
+}
+
+stock GetIndexOfWeaponSlot(iClient, iSlot)
+{
+    return GetWeaponIndex(GetPlayerWeaponSlot(iClient, iSlot));
+}
+
+stock bool:IsValidEnt(iEnt)
+{
+    return iEnt > MaxClients && IsValidEntity(iEnt);
 }
