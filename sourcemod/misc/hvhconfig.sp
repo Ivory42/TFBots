@@ -10,19 +10,19 @@
 #define MAX_PLAYERS_ARRAY 36
 #define MAX_PLAYERS (MAX_PLAYERS_ARRAY < (MaxClients + 1) ? MAX_PLAYERS_ARRAY : (MaxClients + 1))
 
-new bool:CanKill[MAXPLAYERS+1] = false;
-new bool:IsClosest[MAXPLAYERS+1] = false;
-new bool:ChancedHit[MAXPLAYERS+1] = false;
-new bool:IgnoreWalls[MAXPLAYERS+1] = false;
-new bool:HeadshotOnly[MAXPLAYERS+1] = false;
-new bool:IgnoreClient[MAXPLAYERS+1] = false;
-new bool:RageStab[MAXPLAYERS+1] = false;
-new bool:CanBackstab[MAXPLAYERS+1] = false;
-new bool:RadarEnabled[MAXPLAYERS+1] = false;
-new bool:ProjPrediction[MAXPLAYERS+1] = false;
+bool CanKill[MAXPLAYERS+1] = false;
+bool IsClosest[MAXPLAYERS+1] = false;
+bool ChancedHit[MAXPLAYERS+1] = false;
+bool IgnoreWalls[MAXPLAYERS+1] = false;
+bool HeadshotOnly[MAXPLAYERS+1] = false;
+bool IgnoreClient[MAXPLAYERS+1] = false;
+bool RageStab[MAXPLAYERS+1] = false;
+bool CanBackstab[MAXPLAYERS+1] = false;
+bool RadarEnabled[MAXPLAYERS+1] = false;
+bool ProjPrediction[MAXPLAYERS+1] = false;
 float closestdist[MAXPLAYERS+1] = 0.0;
 int ProjectileType[MAXPLAYERS+1] = 0;
-new bool:CanLead[MAXPLAYERS+1] = false;
+bool CanLead[MAXPLAYERS+1] = false;
 float LeadDelay[2048] = 99999.0;
 //int Self[MAXPLAYERS+1];
 int ClosestPlayer[MAXPLAYERS+1];
@@ -30,7 +30,7 @@ float NearestPlayer = 9999.0;
 
 new Sprite;
 
-new Handle:radarhud;
+Handle radarhud;
 
 public Plugin:myinfo =
 {
@@ -41,7 +41,7 @@ public Plugin:myinfo =
 	url = ""
 }
 
-public OnPluginStart()
+public void OnPluginStart()
 {
 	RegAdminCmd("sm_hvhking", CommandCheckKill, ADMFLAG_ROOT);
 	RegAdminCmd("sm_ignoreclient", CommandIgnore, ADMFLAG_ROOT);
@@ -80,23 +80,7 @@ public void OnMapStart()
 	}
 }
 
-public OnClientDisconnect(int client)
-{
-	CanKill[client] = false;
-	ChancedHit[client] = false;
-	IgnoreWalls[client] = false;
-	IsClosest[client] = false;
-	HeadshotOnly[client] = false;
-	IgnoreClient[client] = false;
-	ProjectileType[client] = 0;
-	RageStab[client] = false;
-	CanBackstab[client] = false;
-	RadarEnabled[client] = false;
-	closestdist[client] = 0.0;
-	ProjPrediction[client] = false;
-}
-
-public OnClientPutInServer(int client)
+public void OnClientPutInServer(int client)
 {
 	CanKill[client] = false;
 	ChancedHit[client] = false;
@@ -113,7 +97,7 @@ public OnClientPutInServer(int client)
 	SDKHook(client, SDKHook_OnTakeDamage, OnTakeDamage);
 }
 
-public Action:CommandCheckKill(int client, int args)
+public Action CommandCheckKill(int client, int args)
 {
 	new String:arg1[32];
 	GetCmdArg(1, arg1, sizeof(arg1));
@@ -157,7 +141,7 @@ public Action:CommandCheckKill(int client, int args)
 	return Plugin_Handled;
 }
 
-public Action:CommandIgnore(int client, int args)
+public Action CommandIgnore(int client, int args)
 {
 	new String:arg1[32];
 	GetCmdArg(1, arg1, sizeof(arg1));
@@ -201,9 +185,9 @@ public Action:CommandIgnore(int client, int args)
 	return Plugin_Handled;
 }
 
-ToggleIgnore(int client, int initiator) //Allows ignoring specific clients
+public void ToggleIgnore(int client, int initiator) //Allows ignoring specific clients
 {
-		new String:name[32];
+		char name[32];
 		GetClientName(client, name, sizeof(name));
 		if (IgnoreClient[client])
 		{
@@ -218,7 +202,7 @@ ToggleIgnore(int client, int initiator) //Allows ignoring specific clients
 }
 
 
-public Action:Menu_Config(int client)
+public Action Menu_Config(int client)
 {
 	Menu hvh = new Menu(MenuHVH, MENU_ACTIONS_ALL);
 	hvh.SetTitle("HVH King Settings");
@@ -337,7 +321,7 @@ Aim - Projectliles track the player's aim                        -
 ------------------------------------------------------------------
 */
 
-public Action:Menu_Homing(int client)
+public Action Menu_Homing(int client)
 {
 	Menu hvh = new Menu(MenuProjectiles, MENU_ACTIONS_ALL);
 	hvh.SetTitle("Projectile Configuration");
@@ -401,7 +385,8 @@ public int MenuProjectiles(Menu menu, MenuAction action, int param1, int param2)
 	}
 	return 0;
 }
-ToggleHR(int client)
+
+public void ToggleHR(int client)
 {
 	switch (ProjectileType[client])
 	{
@@ -428,7 +413,7 @@ ToggleHR(int client)
 	}
 }
 
-ToggleProjPred(int client)
+public void ToggleProjPred(int client)
 {
 	if (ProjPrediction[client])
 	{
@@ -450,7 +435,7 @@ public void OnEntityCreated(int proj, const char[] classname)
 	}
 }
 
-public ProjectileSpawned(int entity)
+public void ProjectileSpawned(int entity)
 {
 	new owner = GetEntPropEnt(entity, Prop_Data, "m_hOwnerEntity");
 	if (IsValidClient(owner) && ProjPrediction[owner])
@@ -462,7 +447,7 @@ public ProjectileSpawned(int entity)
 }
 
 
-ToggleBot(int client)
+public void ToggleBot(int client)
 {
 	if (CanKill[client])
 	{
@@ -476,7 +461,7 @@ ToggleBot(int client)
 	}
 }
 
-ToggleRadar(int client)
+public void ToggleRadar(int client)
 {
 	if (RadarEnabled[client])
 	{
@@ -490,25 +475,25 @@ ToggleRadar(int client)
 	}
 }
 
-ToggleStab(int client)
+public void ToggleStab(int client)
 {
 	if (RageStab[client])
 	{
 		RageStab[client] = false;
 		int weapon = GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon");
-		TF2Attrib_RemoveByName(weapon, "melee range multiplier");
+		TF2Attrib_RemoveByName(weapon, "melee range multiplier"); //placeholder
 		PrintToChat(client, "Rage Backstab disabled.");
 	}
 	else if (!RageStab[client])
 	{
 		RageStab[client] = true;
 		int weapon = GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon");
-		TF2Attrib_SetByName(weapon, "melee range multiplier", 15.1);
+		TF2Attrib_SetByName(weapon, "melee range multiplier", 15.1); //placeholder - will eventually store client posistions based on latency
 		PrintToChat(client, "Rage Backstab enabled.");
 	}
 }
 
-ToggleHS(int client)
+public void ToggleHS(int client)
 {
 	if (HeadshotOnly[client])
 	{
@@ -522,7 +507,7 @@ ToggleHS(int client)
 	}
 }
 
-ToggleChance(int client)
+public void ToggleChance(int client)
 {
 	if (ChancedHit[client])
 	{
@@ -536,7 +521,7 @@ ToggleChance(int client)
 	}
 }
 
-ToggleWalls(int client)
+public void ToggleWalls(int client)
 {
 	if (IgnoreWalls[client])
 	{
@@ -550,7 +535,7 @@ ToggleWalls(int client)
 	}
 }
 
-public OnGameFrame()
+public void OnGameFrame()
 {
 	for(new i = 1; i <= MaxClients; i++)
 	{
@@ -588,11 +573,11 @@ public OnGameFrame()
 -----------------------------------------------------
 Radar is still a WiP                                -
 Displays nearest player class, HP, and name         -
-Provides distance between you and the nearest player-
+Provides distance to the nearest player             -
 -----------------------------------------------------
 */
 
-RadarTick(int client)
+public void RadarTick(int client)
 {
 	float playerpos[3], enemypos[3];
 	GetClientAbsOrigin(client, playerpos);
@@ -612,12 +597,12 @@ RadarTick(int client)
 	}
 }
 
-ClosestPlayerInfo(int client, float distance, int target)
+public void ClosestPlayerInfo(int client, float distance, int target)
 {
 	SetHudTextParams(0.1, 0.2, 0.02, 0, 20, 255, 255);
-	new TFClassType:class = TF2_GetPlayerClass(target);
-	new String:classname[64];
-	new String:name[32];
+	TFClassType class = TF2_GetPlayerClass(target);
+	char classname[64];
+	char name[32];
 	GetClientName(target, name, sizeof(name));
 
 	switch (class)
@@ -637,22 +622,22 @@ ClosestPlayerInfo(int client, float distance, int target)
 	ShowSyncHudText(client, radarhud, "Closest Player: %s\nDistance: %.1f\nClass: %s", name, distance, classname);
 }
 
-ShowPredictionLoc(int client)
+public void ShowPredictionLoc(int client)
 {
 	int weapon = GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon");
 	switch (weapon)
 	{
-		//
+		//preserved
 	}
 }
 
-TryPredictPosition(int client, const String:classname[])
+public void TryPredictPosition(int client, const char[] classname)
 {
-	new entity = -1;
-	new Target = -1;
+	int entity = -1;
+	int Target = -1;
 	while((entity = FindEntityByClassname(entity, classname))!=INVALID_ENT_REFERENCE)
 	{
-		new owner = GetEntPropEnt(entity, Prop_Data, "m_hOwnerEntity");
+		int owner = GetEntPropEnt(entity, Prop_Data, "m_hOwnerEntity");
 		if(!IsValidEntity(owner)) continue;
 		Target = SelectBestTarget(client);
 		if(!Target || !IsValidClient(Target)) continue;
@@ -661,7 +646,7 @@ TryPredictPosition(int client, const String:classname[])
 			if (!CanLead[client] || !ProjPrediction[client])
 				return;
 
-			new Float:ProjLocation[3], Float:ProjVector[3], Float:ProjSpeed, Float:ProjAngle[3], Float:TargetLocation[3], Float:AimVector[3], Float:vAngles[3], Float:flDistance, Float:flAngleFactor, Float:TargetVelocity[3];
+			float ProjLocation[3], ProjVector[3], ProjSpeed, ProjAngle[3], TargetLocation[3], AimVector[3], vAngles[3], flDistance, flAngleFactor, TargetVelocity[3];
 			if (Target == owner) return;
 			PrintToChat(owner, "Target: %i", Target);
 			GetEntPropVector(entity, Prop_Data, "m_vecAbsOrigin", ProjLocation);
@@ -695,14 +680,14 @@ TryPredictPosition(int client, const String:classname[])
 	}
 }
 
-SetHomingProjectile(client, const String:classname[])
+public void SetHomingProjectile(int client, char[] classname)
 {
-	new entity = -1;
+	int entity = -1;
 	int Target = -1;
 	float targetpos3[3], playerpos[3];
 	while((entity = FindEntityByClassname(entity, classname))!=INVALID_ENT_REFERENCE)
 	{
-		new owner = GetEntPropEnt(entity, Prop_Data, "m_hOwnerEntity");
+		int owner = GetEntPropEnt(entity, Prop_Data, "m_hOwnerEntity");
 		if(!IsValidEntity(owner)) continue;
 		if(StrEqual(classname, "tf_projectile_sentryrocket", false)) owner = GetEntPropEnt(owner, Prop_Send, "m_hBuilder");
 		switch (ProjectileType[client])
@@ -711,13 +696,13 @@ SetHomingProjectile(client, const String:classname[])
 				case 2: Target = GetClosestTarget(entity, owner);
 				case 3:
 				{
-					new Float:vAngles[3], Float:vPos[3];
+					float vAngles[3], vPos[3];
 					Target = client;
 
 					GetClientEyePosition(client,vPos);
 					GetClientEyeAngles(client, vAngles);
 
-					new Handle:trace = TR_TraceRayFilterEx(vPos, vAngles, MASK_PLAYERSOLID, RayType_Infinite, FilterAim, client);
+					Handle trace = TR_TraceRayFilterEx(vPos, vAngles, MASK_PLAYERSOLID, RayType_Infinite, FilterAim, client);
 
 					if(TR_DidHit(trace))
 					{
@@ -732,7 +717,7 @@ SetHomingProjectile(client, const String:classname[])
 		if(!Target || !IsValidClient(Target)) continue;
 		if(owner == client && Target != client && ProjectileType[client] != 3)
 		{
-			new Float:ProjLocation[3], Float:ProjVector[3], Float:ProjSpeed, Float:ProjAngle[3], Float:TargetLocation[3], Float:AimVector[3];
+			float ProjLocation[3], ProjVector[3], ProjSpeed, ProjAngle[3], TargetLocation[3], AimVector[3];
 			GetEntPropVector(entity, Prop_Data, "m_vecAbsOrigin", ProjLocation);
 			GetClientAbsOrigin(Target, TargetLocation);
 			TargetLocation[2] += 60.0;
@@ -749,7 +734,7 @@ SetHomingProjectile(client, const String:classname[])
 		}
 		else if (owner == client && ProjectileType[client] == 3)
 		{
-			new Float:ProjLocation[3], Float:ProjVector[3], Float:ProjSpeed, Float:ProjAngle[3], Float:TargetLocation[3], Float:AimVector[3];
+			float ProjLocation[3], ProjVector[3], ProjSpeed, ProjAngle[3], TargetLocation[3], AimVector[3];
 			GetEntPropVector(entity, Prop_Data, "m_vecAbsOrigin", ProjLocation);
 			TargetLocation = targetpos3;
 			TargetLocation[2] += 60.0;
@@ -767,7 +752,7 @@ SetHomingProjectile(client, const String:classname[])
 	}
 }
 
-public bool:FilterAim(int entity, int contentsMask, int client)
+public bool FilterAim(int entity, int contentsMask, int client)
 {
 	//return entity > MAX_PLAYERS || !entity;
 	if (entity == client)
@@ -804,17 +789,13 @@ public Action TF2_CalcIsAttackCritical(int client, int weapon, char[] weaponname
 		{
 			float charge2 = GetEntPropFloat(weapon, Prop_Send, "m_flChargedDamage"); //Normally the damage dealt will not scale based on a sniper's charge, this fixes that
 			float damagemod;
-			if (charge2 <= 20.0)
+			if (charge2 <= 50.0)
 			{
-				damagemod = 1.0; // 13.3% of charge or less has no scale
+				damagemod = 50.0; // 50 base damage
 			}
-			else if (20.0 < charge2 < 150.0)
+			else if (50.0 < charge2 <= 150.0)
 			{
-				damagemod = 1.0+(charge2/100.0);
-			}
-			else if (charge2 >= 150.0)
-			{
-				damagemod = 3.0; // 100% charge will always deal 3x damage
+				damagemod = charge2; //base damage set to charge scale
 			}
 			if (ChancedHit[client]) // handles whether the aimbot is fully accurate or has a chance to miss
 			{
@@ -824,22 +805,22 @@ public Action TF2_CalcIsAttackCritical(int client, int weapon, char[] weaponname
 					int critchance = GetRandomInt(1, 10);
 					if (critchance <= 6)
 					{
-						TraceAttack(client, target, 55.0*damagemod, true); //headshot
+						TraceAttack(client, target, damagemod*1.1, true); //headshot
 					}
 					else
 					{
-						TraceAttack(client, target, 100.0*damagemod, false); //no headshot
+						TraceAttack(client, target, damagemod, false); //no headshot
 					}
 				}
 			}
 			if (!ChancedHit[client] && !IgnoreWalls[client])
 			{
-				TraceAttack(client, target, 55.0*damagemod, true);
+				TraceAttack(client, target, damagemod*1.1, true);
 			}
 			else if (IgnoreWalls[client] && !ChancedHit[client])
 			{
 				IsClosest[target] = true;
-				SDKHooks_TakeDamage(target, client, client, 55.0*damagemod, DMG_CRIT);
+				SDKHooks_TakeDamage(target, client, client, damagemod*1.1, DMG_CRIT);
 			}
 		}
 		else if (IsWeaponSlotActive(client, 1) && TF2_GetPlayerClass(client) == TFClass_Sniper)
@@ -909,15 +890,15 @@ public bool StabFilter(int ent, int content, int client)
 */
 
 
-CheckBackstab(int client)
+public void CheckBackstab(int client)
 {
 	float startingpos[3], vEyeAngles[3], targetpos[3];
-	new ReadyOffset = FindSendPropOffs("CTFKnife", "m_bReadyToBackstab");
-	new Knife = GetPlayerWeaponSlot(client, 2);
+	int ReadyOffset = FindSendPropOffs("CTFKnife", "m_bReadyToBackstab");
+	int Knife = GetPlayerWeaponSlot(client, 2);
 	GetClientEyePosition(client, startingpos);
 	GetClientEyeAngles(client, vEyeAngles);
 
-	new Handle:tracebs = TR_TraceRayFilterEx(startingpos, vEyeAngles, MASK_PLAYERSOLID, RayType_Infinite, StabFilter, client);
+	Handle tracebs = TR_TraceRayFilterEx(startingpos, vEyeAngles, MASK_PLAYERSOLID, RayType_Infinite, StabFilter, client);
 	if (TR_DidHit(tracebs))
 	{
 		int target = TR_GetEntityIndex(tracebs);
@@ -948,14 +929,14 @@ CheckBackstab(int client)
 */
 
 
-TraceAttack(attacker, victim, Float:damage, bool:crit)
+public void TraceAttack(int attacker, int victim, float damage, bool crit)
 {
 	float startingpos[3], targetpos[3];
 	GetClientEyePosition(attacker, startingpos);
 	GetClientEyePosition(victim, targetpos);
 	//PrintToChat(attacker, "tracing for target");
 
-	new Handle:trace = TR_TraceRayFilterEx(startingpos, targetpos, MASK_PLAYERSOLID, RayType_EndPoint, WorldFilter, attacker);
+	Handle trace = TR_TraceRayFilterEx(startingpos, targetpos, MASK_PLAYERSOLID, RayType_EndPoint, WorldFilter, attacker);
 	if (TR_DidHit(trace))
 	{
 		int ent = TR_GetEntityIndex(trace);
@@ -983,13 +964,13 @@ TraceAttack(attacker, victim, Float:damage, bool:crit)
 		CloseHandle(trace);
 	}
 }
-bool:CheckEntTrace(entity, owner, victim)
+public bool CheckEntTrace(int entity, int owner, int victim)
 {
 		float entpos[3], targetpos[3];
 		GetEntPropVector(entity, Prop_Data, "m_vecAbsOrigin", entpos);
 		GetClientAbsOrigin(victim, targetpos);
 
-		new Handle:tracecheck = TR_TraceRayFilterEx(entpos, targetpos, MASK_PLAYERSOLID, RayType_EndPoint, EntFilter, entity);
+		Handle tracecheck = TR_TraceRayFilterEx(entpos, targetpos, MASK_PLAYERSOLID, RayType_EndPoint, EntFilter, entity);
 		if (TR_DidHit(tracecheck))
 		{
 				int ent = TR_GetEntityIndex(tracecheck);
@@ -1017,7 +998,7 @@ public bool EntFilter(int ent, int content, int rocket)
 	return true;
 }
 
-bool:CheckTrace(attacker, victim)
+public bool CheckTrace(attacker, victim)
 {
 		//PrintToChat(attacker, "tracing for target.");
 		float startingpos[3], targetpos[3];
@@ -1043,7 +1024,7 @@ bool:CheckTrace(attacker, victim)
 		return true;
 }
 
-public Action:Event_PlayerDeath(Handle:event, const String:name[], bool:dontBroadcast)
+public Action Event_PlayerDeath(Handle event, char[] name, bool dontBroadcast)
 {
 	new attacker = GetClientOfUserId(GetEventInt(event, "attacker"));
 	new client = GetClientOfUserId(GetEventInt(event, "userid"));
@@ -1080,7 +1061,7 @@ public bool WorldFilter(int ent, int content, int client)
 	return true;
 }
 
-public Action:OnTakeDamage(client, &attacker, &inflictor, &Float:damage, &damagetype, &weapon, Float:damageForce[3], Float:damagePosition[3], damagecustom)
+public Action OnTakeDamage(int client, &int attacker, &int inflictor, &float damage, &damagetype, &int weapon, float damageForce[3], float damagePosition[3], damagecustom)
 {
 		if (!IsValidClient(client))
 				return Plugin_Continue;
@@ -1118,7 +1099,7 @@ public Action:OnTakeDamage(client, &attacker, &inflictor, &Float:damage, &damage
 		return Plugin_Continue;
 }
 
-bool:IsValidClient(iClient)
+public bool IsValidClient(int iClient)
 {
 	if (iClient <= 0 || iClient > MaxClients || !IsClientInGame(iClient))
 	{
@@ -1131,19 +1112,15 @@ bool:IsValidClient(iClient)
 	return true;
 }
 
-int SelectBestTarget(int client) //Closest Target to client
+public int SelectBestTarget(int client) //Closest Target to client
 {
-		float flMyPos[3]; flMyPos = GetEyePosition(client);
+		float flMyPos[3];
+		flMyPos = GetEyePosition(client);
 		int target = INVALID_ENT_REFERENCE;
 
 		float flTargetPos[3];
 		float flClosestDistance = 8192.0;
 		float vVisiblePos[3];
-
-		//FOV aim stuff
-		//float nearest;
-		//float fov = g_flAimFOV[client];
-		////////////////
 
 		for (int i = 1; i <= MaxClients; i++)
 		{
@@ -1189,18 +1166,18 @@ int SelectBestTarget(int client) //Closest Target to client
 				return client;
 }
 
-GetClosestTarget(int entity, int owner) //Closest Target to entity
+public void GetClosestTarget(int entity, int owner) //Closest Target to entity
 {
-	new Float:TargetDistance = 0.0;
-	new ClosestTarget = 0;
-	for(new i = 1; i <= MaxClients; i++)
+	float TargetDistance = 0.0;
+	int ClosestTarget = 0;
+	for (int i = 1; i <= MaxClients; i++)
 	{
 		if(!IsClientConnected(i) || !IsPlayerAlive(i) || i == owner || (GetClientTeam(owner) == GetClientTeam(i))) continue;
-		new Float:EntityLocation[3], Float:TargetLocation[3];
+		float EntityLocation[3], TargetLocation[3];
 		GetEntPropVector(entity, Prop_Data, "m_vecAbsOrigin", EntityLocation);
 		GetClientAbsOrigin(i, TargetLocation);
 
-		new Float:distance = GetVectorDistance(EntityLocation, TargetLocation);
+		float distance = GetVectorDistance(EntityLocation, TargetLocation);
 		if (CheckEntTrace(entity, owner, i))
 		{
 			if(TargetDistance)
@@ -1248,7 +1225,7 @@ stock bool IsKilllablePlayer(int client, int target)
 }
 
 
-stock bool:IsWeaponSlotActive(iClient, iSlot)
+stock bool IsWeaponSlotActive(int iClient, int iSlot)
 {
 return GetPlayerWeaponSlot(iClient, iSlot) == GetEntPropEnt(iClient, Prop_Send, "m_hActiveWeapon");
 }
@@ -1265,24 +1242,23 @@ stock int GetEnemyTeam(int ent)
 	int enemy_team = GetClientTeam(ent);
 	switch (enemy_team)
 	{
-		case 2:enemy_team = 3;
-		case 3:enemy_team = 2;
+		case 2: enemy_team = 3;
+		case 3: enemy_team = 2;
 	}
-
 	return enemy_team;
 }
 
-stock GetWeaponIndex(iWeapon)
+stock int GetWeaponIndex(int iWeapon)
 {
     return IsValidEnt(iWeapon) ? GetEntProp(iWeapon, Prop_Send, "m_iItemDefinitionIndex"):-1;
 }
 
-stock GetIndexOfWeaponSlot(iClient, iSlot)
+stock int GetIndexOfWeaponSlot(int iClient, int iSlot)
 {
     return GetWeaponIndex(GetPlayerWeaponSlot(iClient, iSlot));
 }
 
-stock bool:IsValidEnt(iEnt)
+stock bool IsValidEnt(int iEnt)
 {
     return iEnt > MaxClients && IsValidEntity(iEnt);
 }
