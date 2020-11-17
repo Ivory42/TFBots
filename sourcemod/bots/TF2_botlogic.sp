@@ -74,7 +74,7 @@ public Action:OnTakeDamage(client, &attacker, &inflictor, &Float:damage, &damage
 }
 */
 
-public Action:PlayerDeath(Handle:event, const String:name[], bool:dontBroadcast)
+public Action PlayerDeath(Handle event, const char[] name, bool dontBroadcast)
 {
 	new attacker = GetClientOfUserId(GetEventInt(event, "attacker"));
 	//new client = GetClientOfUserId(GetEventInt(event, "userid"));
@@ -89,13 +89,13 @@ public Action:PlayerDeath(Handle:event, const String:name[], bool:dontBroadcast)
 	return Plugin_Continue;
 }
 
-Float:moveForward(Float:vel[3],Float:MaxSpeed)
+stock float moveForward(float vel[3], float MaxSpeed)
 {
 	vel[0] = MaxSpeed;
 	return vel;
 }
 
-public Action:RoundStarted(Handle: event , const String: name[] , bool: dontBroadcast)
+public Action RoundStarted(Handle event, const char[] name, bool dontBroadcast)
 {
 	char currentMap[PLATFORM_MAX_PATH];
 	GetCurrentMap(currentMap, sizeof(currentMap));
@@ -109,9 +109,9 @@ public Action:RoundStarted(Handle: event , const String: name[] , bool: dontBroa
 		new snipepos3 = CreateEntityByName("func_tfbot_hint");
 		DispatchKeyValue(snipepos3, "team", "2");
 
-		new Float:origin[3] = {233.0, 1020.0, 294.0};
-		new Float:origin2[3] = {-234.0, 1028.0, 294.0};
-		new Float:origin3[3] = {23.0, 881.0, 0.0};
+		float origin[3] = {233.0, 1020.0, 294.0};
+		float origin2[3] = {-234.0, 1028.0, 294.0};
+		float origin3[3] = {23.0, 881.0, 0.0};
 
 		TeleportEntity(snipepos, origin, NULL_VECTOR, NULL_VECTOR);
 		TeleportEntity(snipepos2, origin2, NULL_VECTOR, NULL_VECTOR);
@@ -124,9 +124,9 @@ public Action:RoundStarted(Handle: event , const String: name[] , bool: dontBroa
 		new snipepos6 = CreateEntityByName("func_tfbot_hint");
 		DispatchKeyValue(snipepos6, "team", "3");
 
-		new Float:origin4[3] = {-224.0, -1042.0, 306.0};
-		new Float:origin5[3] = {229.0, -1029.0, 305.0};
-		new Float:origin6[3] = {-27.0, -876.0, 298.0};
+		float origin4[3] = {-224.0, -1042.0, 306.0};
+		float origin5[3] = {229.0, -1029.0, 305.0};
+		float origin6[3] = {-27.0, -876.0, 298.0};
 
 		TeleportEntity(snipepos4, origin4, NULL_VECTOR, NULL_VECTOR);
 		TeleportEntity(snipepos5, origin5, NULL_VECTOR, NULL_VECTOR);
@@ -147,12 +147,12 @@ public Action:RoundStarted(Handle: event , const String: name[] , bool: dontBroa
 		new snipepos6 = CreateEntityByName("func_tfbot_hint");
 		DispatchKeyValue(snipepos6, "team", "0");
 
-		new Float:origin[3] = {1605.0, 2383.0, 523.0};
-		new Float:origin2[3] = {2368.0, 1363.0, 523.0};
-		new Float:origin3[3] = {2375.0, 2633.0, 523.0};
-		new Float:origin4[3] = {2267.0, -1278.0, 363.0};
-		new Float:origin5[3] = {-2136.0, 858.0, 476.0};
-		new Float:origin6[3] = {-2133.0, 1427.0, 468.0};
+		float origin[3] = {1605.0, 2383.0, 523.0};
+		float origin2[3] = {2368.0, 1363.0, 523.0};
+		float origin3[3] = {2375.0, 2633.0, 523.0};
+		float origin4[3] = {2267.0, -1278.0, 363.0};
+		float origin5[3] = {-2136.0, 858.0, 476.0};
+		float origin6[3] = {-2133.0, 1427.0, 468.0};
 
 		TeleportEntity(snipepos, origin, NULL_VECTOR, NULL_VECTOR);
 		TeleportEntity(snipepos2, origin2, NULL_VECTOR, NULL_VECTOR);
@@ -176,12 +176,12 @@ public Action:RoundStarted(Handle: event , const String: name[] , bool: dontBroa
 		new snipepos12 = CreateEntityByName("func_tfbot_hint");
 		DispatchKeyValue(snipepos12, "team", "2");
 
-		new Float:origin[3] = {922.0, -1043.0, 366.0};
-		new Float:origin2[3] = {-1424.0, -395.0, 331.0};
-		new Float:origin3[3] = {-930.0, -414.0, 331.0};
-		new Float:origin10[3] = {-743.0, -1093.0, 448.0};
-		new Float:origin11[3] = {-242.0, -1090.0, 45.0};
-		new Float:origin12[3] = {1262.0, 387.0, 300.0};
+		float origin[3] = {922.0, -1043.0, 366.0};
+		float origin2[3] = {-1424.0, -395.0, 331.0};
+		float origin3[3] = {-930.0, -414.0, 331.0};
+		float origin10[3] = {-743.0, -1093.0, 448.0};
+		float origin11[3] = {-242.0, -1090.0, 45.0};
+		float origin12[3] = {1262.0, 387.0, 300.0};
 
 		TeleportEntity(snipepos, origin, NULL_VECTOR, NULL_VECTOR);
 		TeleportEntity(snipepos2, origin2, NULL_VECTOR, NULL_VECTOR);
@@ -203,12 +203,12 @@ public Action:RoundStarted(Handle: event , const String: name[] , bool: dontBroa
 		new snipepos9 = CreateEntityByName("func_tfbot_hint");
 		DispatchKeyValue(snipepos9, "team", "3");
 
-		new Float:origin4[3] = {-892.0, 1032.0, 367.0};
-		new Float:origin5[3] = {1344.0, 296.0, 331.0};
-		new Float:origin6[3] = {198.0, 1085.0, 454.0};
-		new Float:origin7[3] = {744.0, 1093.0, 449.0};
-		new Float:origin8[3] = {892.0, 397.0, 331.0};
-		new Float:origin9[3] = {-1295.0, -392.0, 300.0};
+		float origin4[3] = {-892.0, 1032.0, 367.0};
+		float origin5[3] = {1344.0, 296.0, 331.0};
+		float origin6[3] = {198.0, 1085.0, 454.0};
+		float origin7[3] = {744.0, 1093.0, 449.0};
+		float origin8[3] = {892.0, 397.0, 331.0};
+		float origin9[3] = {-1295.0, -392.0, 300.0};
 
 		TeleportEntity(snipepos4, origin4, NULL_VECTOR, NULL_VECTOR);
 		TeleportEntity(snipepos5, origin5, NULL_VECTOR, NULL_VECTOR);
@@ -228,9 +228,9 @@ public Action:RoundStarted(Handle: event , const String: name[] , bool: dontBroa
 		new engipos = CreateEntityByName("bot_hint_engineer_nest");
 		DispatchKeyValue(engipos, "team", "3");
 
-		new Float:origin[3] = {-183.0, 1921.0, 452.0};
-		new Float:origin2[3] = {522.0, 2025.0, 193.0};
-		new Float:origin3[3] = {-650.0, 992.0, 232.0};
+		float origin[3] = {-183.0, 1921.0, 452.0};
+		float origin2[3] = {522.0, 2025.0, 193.0};
+		float origin3[3] = {-650.0, 992.0, 232.0};
 
 		TeleportEntity(snipepos, origin, NULL_VECTOR, NULL_VECTOR);
 		TeleportEntity(snipepos2, origin3, NULL_VECTOR, NULL_VECTOR);
@@ -315,7 +315,7 @@ bool:Obstructed(int client)
 */
 
 
-public Action:OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3])
+public Action OnPlayerRunCmd(int client, &buttons, &impulse, float vel[3])
 {
 	if(IsValidClient(client))
 	{
@@ -354,7 +354,7 @@ public Action:OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3])
 						if (JumpTimer[client] <= GetEngineTime())
 						{
 							vel = moveForward(vel,500.0);
-							new Float:newDirection[3];
+							float newDirection[3];
 							GetClientEyeAngles(client, newDirection);
 							newDirection[0] = 60.0;
 							newDirection[1] = 160.0;
@@ -371,54 +371,29 @@ public Action:OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3])
 								buttons |= IN_JUMP;
 								Jump[client] = false;
 						}
-						//awdfa
-					//new itemflag; // TODO : How to make detect flag?
-					//new Flag;
-					//if((Flag = FindEntityByClassname(Flag, "iteam_teamflag")) != INVALID_ENT_REFERENCE)
-					//{
-					//	if(IsValidEntity(Flag))
-					//	{
-					//		float fEntityLocation[3];
-					//		new Float:clientOrigin[3];
-					//		GetClientAbsOrigin(client, clientOrigin);
-					//		GetEntPropVector(Flag, Prop_Send, "m_vecOrigin", fEntityLocation);
-					//
-					//		new Float:chainDistance2;
-					//		chainDistance2 = GetVectorDistance(clientOrigin,fEntityLocation);
-					//
-					//		if(chainDistance2 < 1000.0)
-					//		{
-					//			itemflag = 1;
-					//		}
-					//		else
-					//		{
-					//			itemflag = 0;
-					//		}
-					//	}
-					//}
 					if(StrContains(currentMap, "pl_upward" , false) != -1)
 					{
-						new Float:clientOrigin[3];
+						float clientOrigin[3];
 						GetClientAbsOrigin(client, clientOrigin);
 						if(team == 2)
 						{
-							new Float:rocketjump1[3] = {-257.0, -761.0, 68.0};
-							new Float:rocketjump2[3] = {255.0, -788.0, 87.0};
-							new Float:rocketjumpfix1[3] = {-220.0, -882.0, 332.0};
-							new Float:rocketjumpfix2[3] = {229.0, -888.0, 332.0};
-							new Float:chainDistance1;
-							chainDistance1 = GetVectorDistance(clientOrigin,rocketjump1);
-							new Float:chainDistance2;
-							chainDistance2 = GetVectorDistance(clientOrigin,rocketjump2);
-							new Float:chainDistance3;
-							chainDistance3 = GetVectorDistance(clientOrigin,rocketjumpfix1);
-							new Float:chainDistance4;
-							chainDistance4 = GetVectorDistance(clientOrigin,rocketjumpfix2);
+							float rocketjump1[3] = {-257.0, -761.0, 68.0};
+							float rocketjump2[3] = {255.0, -788.0, 87.0};
+							float rocketjumpfix1[3] = {-220.0, -882.0, 332.0};
+							float rocketjumpfix2[3] = {229.0, -888.0, 332.0};
+							float chainDistance1;
+							chainDistance1 = GetVectorDistance(clientOrigin, rocketjump1);
+							float chainDistance2;
+							chainDistance2 = GetVectorDistance(clientOrigin, rocketjump2);
+							float chainDistance3;
+							chainDistance3 = GetVectorDistance(clientOrigin, rocketjumpfix1);
+							float chainDistance4;
+							chainDistance4 = GetVectorDistance(clientOrigin, rocketjumpfix2);
 							if(IsWeaponSlotActive(client, 0) && GetHealth(client) > 100.0)
 							{
 								if(chainDistance1 < 100.0)
 								{
-									new Float:newDirection[3];
+									float newDirection[3];
 									GetClientEyeAngles(client, newDirection);
 									newDirection[0] = 89.0;
 									newDirection[1] = -90.0;
@@ -431,7 +406,7 @@ public Action:OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3])
 								}
 								if(chainDistance2 < 100.0)
 								{
-									new Float:newDirection[3];
+									float newDirection[3];
 									GetClientEyeAngles(client, newDirection);
 									newDirection[0] = 89.0;
 									newDirection[1] = -90.0;
@@ -451,7 +426,7 @@ public Action:OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3])
 									}
 									else
 									{
-										new Float:newDirection[3];
+										float newDirection[3];
 										newDirection[0] = 0.0;
 										newDirection[1] = -90.0;
 										newDirection[2] = 0.0;
@@ -467,7 +442,7 @@ public Action:OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3])
 									}
 									else
 									{
-										new Float:newDirection[3];
+										float newDirection[3];
 										newDirection[0] = 0.0;
 										newDirection[1] = -90.0;
 										newDirection[2] = 0.0;
@@ -478,29 +453,24 @@ public Action:OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3])
 						}
 						if(team == 3)
 						{
-							new Float:rocketjump1[3] = {255.0, 741.0, 60.0};
-							new Float:rocketjump2[3] = {-252.0, 795.0, 90.0};
-							new Float:rocketjump3[3] = {-992.0, -1918.0, 144.0};
-							new Float:rocketjumpfix1[3] = {-226.0, 879.0, 300.0};
-							new Float:rocketjumpfix2[3] = {231.0, 897.0, 482.0};
-							new Float:rocketjumpfix3[3] = {-832.0, -1911.0, 324.0};
-							new Float:chainDistance1;
+							float rocketjump1[3] = {255.0, 741.0, 60.0};
+							float rocketjump2[3] = {-252.0, 795.0, 90.0};
+							float rocketjump3[3] = {-992.0, -1918.0, 144.0};
+							float rocketjumpfix1[3] = {-226.0, 879.0, 300.0};
+							float rocketjumpfix2[3] = {231.0, 897.0, 482.0};
+							float rocketjumpfix3[3] = {-832.0, -1911.0, 324.0};
+							float chainDistance1, chainDistance2, chainDistance3, chainDistance4, chainDeistance6;
 							chainDistance1 = GetVectorDistance(clientOrigin,rocketjump1);
-							new Float:chainDistance2;
 							chainDistance2 = GetVectorDistance(clientOrigin,rocketjump2);
-							new Float:chainDistance5;
 							chainDistance5 = GetVectorDistance(clientOrigin,rocketjump3);
-							new Float:chainDistance3;
 							chainDistance3 = GetVectorDistance(clientOrigin,rocketjumpfix1);
-							new Float:chainDistance4;
 							chainDistance4 = GetVectorDistance(clientOrigin,rocketjumpfix2);
-							new Float:chainDistance6;
 							chainDistance6 = GetVectorDistance(clientOrigin,rocketjumpfix3);
 							if(IsWeaponSlotActive(client, 0) && GetHealth(client) > 100.0)
 							{
 								if(chainDistance1 < 100.0)
 								{
-									new Float:newDirection[3];
+									float newDirection[3];
 									GetClientEyeAngles(client, newDirection);
 									newDirection[0] = 89.0;
 									newDirection[1] = 90.0;
@@ -513,7 +483,7 @@ public Action:OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3])
 								}
 								if(chainDistance2 < 100.0)
 								{
-									new Float:newDirection[3];
+									float newDirection[3];
 									GetClientEyeAngles(client, newDirection);
 									newDirection[0] = 89.0;
 									newDirection[1] = 90.0;
@@ -526,7 +496,7 @@ public Action:OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3])
 								}
 								if(chainDistance5 < 100.0)
 								{
-									new Float:newDirection[3];
+									float newDirection[3];
 									GetClientEyeAngles(client, newDirection);
 									newDirection[0] = 89.0;
 									newDirection[1] = 179.0;
@@ -546,7 +516,7 @@ public Action:OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3])
 									}
 									else
 									{
-										new Float:newDirection[3];
+										float newDirection[3];
 										newDirection[0] = 0.0;
 										newDirection[1] = 90.0;
 										newDirection[2] = 0.0;
@@ -562,7 +532,7 @@ public Action:OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3])
 									}
 									else
 									{
-										new Float:newDirection[3];
+										float newDirection[3];
 										newDirection[0] = 0.0;
 										newDirection[1] = 90.0;
 										newDirection[2] = 0.0;
@@ -578,7 +548,7 @@ public Action:OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3])
 									}
 									else
 									{
-										new Float:newDirection[3];
+										float newDirection[3];
 										newDirection[0] = 0.0;
 										newDirection[1] = -179.0;
 										newDirection[2] = 0.0;
