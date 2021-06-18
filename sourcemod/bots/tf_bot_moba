@@ -11,6 +11,8 @@ int bKillcount = 0;
 int rKillcount = 0;
 int KillTarget = 0;
 
+//This entire plugin needs a re-write
+
 //Bot Settings
 Handle g_hBotQuota;
 bool:CanMove[MAXPLAYERS+1];
