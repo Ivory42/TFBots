@@ -35,74 +35,77 @@
 	"1"
 	{
 		//GENERIC PARAMS
-		"name"	"Lime Scout" 										//bot name
-		"class"	"1" 												//bot class
-		"offclass"	"2" 											//bot offclass
-		"aimdelay"	"0.25" 											//cooldown for auto aim
-		"aimfov"	"45.0" 											//Bot's FOV for finding targets
-		"inaccuracy" "0.35" 										//random deviation added onto our aim when using auto aim
-		"aggrotime"	 "3.0" 											//duration before we break off and try to find a new target
-		"prioritize" "2" 											//Class index we prioritize over all others
-		"health_threshold"	"0.22" 									//Below this health percentage we will try to flee if possible
+		"name"	"Lime Scout" 			//Our display name
+		"class"	"1" 				//Our main class to choose
+		"offclass"	"2" 			//Our secondary class we can choose - Set this to 0 for no offclass
+		"aimdelay"	"0.25" 			//Cooldown for auto aim
+		"aimfov"	"45.0" 			//Our FOV for finding targets
+		"inaccuracy" "3.35" 			//Random deviation added onto our aim when using auto aim
+		"aggrotime"	 "3.0" 			//duration before we break off and try to find a new target
+		"prioritize" "2" 			//Class index we prioritize over all others
+		"health_threshold"	"0.22" 		//Below this health percentage we will try to flee if possible
 		
 		//MOVEMENT PARAMS
-		"preferjump" "1" 											//Do we prefer to jump while in combat
-		"range"		"400.0" 										//Our preferred range of combat
-		"path"		"30.0"											//Our pathfinding radius (if there is an object within this radius, we will check if we can jump over it or move around it)
+		"preferjump" "1" 			//Do we prefer to jump while in combat
+		"range"		"400.0" 		//Our preferred range of combat
+		"path"		"30.0"			//Our pathfinding radius (if there is an object within this radius, we will check if we can jump over it or move around it)
 		
 		//SNIPER PARAMS
-		"aimtime" "0.6"												//How quickly (in seconds) we steady our aim as sniper (this will always have a bit of variance to make sniper aiming look more natural)
+		"aimtime" "0.6"				//How quickly (in seconds) we steady our aim as sniper (this will always have a bit of variance to make sniper aiming look more natural)
 		
 		//SOLDIER PARAMS
-		//"aimground" "1"											//Do we prefer to shoot the ground under the target instead of going for an air shot
-		//"height"	"200.0"											//If target is this far above the ground, we will attempt an airshot anyway
-		//"rj_pref" "0.35"											//Chance we will attempt to use a Rocket Jump Node
+		//These are used to configure soldier specific behaviors - This bot cannot pick soldier, so leaving this here as a reference
+		
+		//"aimground" "1"			//Do we prefer to shoot the ground under the target instead of going for an air shot
+		//"height"	"200.0"			//If target is this far above the ground, we will attempt an airshot anyway
+		//"rj_chance" "0.35"			//Chance we will attempt to use a Rocket Jump Node
+		//"rj_proficiency" "1"			//We will not attempt to rocket jump at nodes above this rating
 		
 		"scout" //This section determines the loadout for the bot when it is playing as a scout
 		{
 			"weapons" //Weapons the bot will use - REQUIRED SECTION
 			{
-				"primary" 				//Primary weapon - This example will produce a professional killstreak australium scattergun with Mean Green Fire Horns
+				"primary" 		//Primary weapon - This example will produce a professional killstreak australium scattergun with Mean Green Fire Horns
 				{
 					"classname"	"tf_weapon_scattergun" 				//Classname of weapon
-					"index"		"200" 								//Weapon index
-					"aussie"	"1" 								//Is this weapon Australium
-					"killstreak"	"1" 							//Does this weapon use a killstreaker
-					"sheen"			"4" 							//Sheen for killstreaker
-					"kEffect"		"2002" 							//Eye Effect for killstreaker
+					"index"		"200" 						//Weapon index
+					"aussie"	"1" 						//Is this weapon Australium
+					"killstreak"	"1" 						//Does this weapon use a killstreaker
+					"sheen"			"4" 					//Sheen for killstreaker
+					"kEffect"		"2002" 					//Eye Effect for killstreaker
 				}
-				"secondary"				//Secondary Weapon - This example will produce a basic killstreak Black Dahlia pistol with the isotope effect
+				"secondary"		//Secondary Weapon - This example will produce a basic killstreak Black Dahlia pistol with the isotope effect
 				{
-					"classname"	"tf_weapon_pistol"					//Classname of weapon
-					"index"		"15046"								//Weapoon index
-					"effect"	"702"								//Unusual Effect for weapon
-					"killstreak"	"1"								//Does this weapon use a killstreaker
+					"classname"	"tf_weapon_pistol"				//Classname of weapon
+					"index"		"15046"						//Weapoon index
+					"effect"	"702"						//Unusual Effect for weapon
+					"killstreak"	"1"						//Does this weapon use a killstreaker
 				}
-				"melee"					//Melee Weapon - This will produce a basic killstreak holy mackerel
+				"melee"			//Melee Weapon - This will produce a basic killstreak holy mackerel
 				{
 					"classname"	"tf_weapon_bat_fish"				//Classname of weapon
-					"index"	"221" 									//Weapon index
-					"killstreak"	"1"								//Does this weapon use a killstreaker
+					"index"	"221" 							//Weapon index
+					"killstreak"	"1"						//Does this weapon use a killstreaker
 				}
 			}
-			"cosmetics"	//Cosmetics the bot will wear THESE ARE ENTIRELY OPTIONAL
+			"cosmetics"	//Optional cosmetics for the bot to wear
 			{
-				"hat"					//This will produce a lime green tossle cap with scorching flames
+				"hat"			//This will produce a lime green tossle cap with scorching flames
 				{
-					"index"	"150" 									//Item Index
-					"effect"	"14"								//Unusual Effect
-					"paint"		"3329330"							//Paint Color
-					//"paint2" 	"" 									//Override Paint Color on Blue team
+					"index"	"150" 							//Item Index
+					"effect"	"14"						//Unusual Effect
+					"paint"		"3329330"					//Paint Color for Red team
+					//"paint2" 	"" 						//Override Paint Color on Blue team
 				}
-				"cosmetic1"				//This will produce a lime green Essential Accessories
+				"cosmetic1"		//This will produce a lime green Essential Accessories
 				{
-					"index"	"347" 									//Item Index
-					"paint"	"3329330" 								//Paint Color
+					"index"	"347" 							//Item Index
+					"paint"	"3329330" 						//Paint Color
 				}
-				"cosmetic2"				//This will produce a lime green Fast Learner
+				"cosmetic2"		//This will produce a lime green Fast Learner
 				{
-					"index" "722"									//Item Index
-					"paint"	"3329330"								//Paint Color
+					"index" "722"							//Item Index
+					"paint"	"3329330"						//Paint Color
 				}
 			}
 		}
@@ -110,45 +113,45 @@
 		{
 			"weapons"
 			{
-				"primary"				//Primary weapon - This example will produce a professional killstreak australium sniper rifle with Mean Green Fire Horns
+				"primary"		//Primary weapon - This example will produce a professional killstreak australium sniper rifle with Mean Green Fire Horns
 				{
 					"classname"	"tf_weapon_sniperrifle"				//Classname of weapon
-					"index"		"201" 								//Weapon Index
-					"aussie"	"1" 								//Is this weapon Australium
-					"killstreak"	"1" 							//Does this weapon use a killstreaker
-					"sheen"			"4"								//Sheen for killstreaker
-					"kEffect"		"2002" 							//Eye Effect for killstreaker
+					"index"		"201" 						//Weapon Index
+					"aussie"	"1" 						//Is this weapon Australium
+					"killstreak"	"1" 						//Does this weapon use a killstreaker
+					"sheen"			"4"					//Sheen for killstreaker
+					"kEffect"		"2002" 					//Eye Effect for killstreaker
 				}
-				"secondary"				//Secondary Weapon - This example will produce a basic killstreak Woodsy Widowmaker with isotope
+				"secondary"		//Secondary Weapon - This example will produce a basic killstreak Woodsy Widowmaker with isotope
 				{
-					"classname"	"tf_weapon_smg"						//Classname of weapon
-					"index"		"15001" 							//Weapon Index
-					"effect"	"702"								//Unusual Effect
-					"killstreak"	"1"								//Does this weapon use a killstreaker
+					"classname"	"tf_weapon_smg"					//Classname of weapon
+					"index"		"15001" 					//Weapon Index
+					"effect"	"702"						//Unusual Effect
+					"killstreak"	"1"						//Does this weapon use a killstreaker
 				}
-				"melee"					//Melee Weapon - This will produce a unique Shahanshah
+				"melee"			//Melee Weapon - This will produce a unique Shahanshah
 				{
-					"classname"	"tf_weapon_club"					//Classname of weapon
-					"index"	"193"									//Weapon Index
+					"classname"	"tf_weapon_club"				//Classname of weapon
+					"index"	"193"							//Weapon Index
 				}
 			}
 			"cosmetics"
 			{
-				"hat"					//This will produce a lime green Trophy Belt with scorching flames
+				"hat"			//This will produce a lime green Trophy Belt with scorching flames
 				{
-					"index"	"53" 									//Item Index
-					"effect"	"14" 								//Unusual Effect
-					"paint"		"3329330"							//Paint Color
+					"index"	"53" 							//Item Index
+					"effect"	"14" 						//Unusual Effect
+					"paint"		"3329330"					//Paint Color
 				}
-				"cosmetic1"				//This will produce a lime green Villain's Veil
+				"cosmetic1"		//This will produce a lime green Villain's Veil
 				{
-					"index"	"393" 									//Item Index
-					"paint"	"3329330" 								//Paint Color
+					"index"	"393" 							//Item Index
+					"paint"	"3329330" 						//Paint Color
 				}
-				"cosmetic2"				//This will produce a lime green Teufort Tooth Kickers
+				"cosmetic2"		//This will produce a lime green Teufort Tooth Kickers
 				{
-					"index" "734" 									//Item Index
-					"paint"	"3329330"								//Paint Color
+					"index" "734" 							//Item Index
+					"paint"	"3329330"						//Paint Color
 				}
 			}
 		}
