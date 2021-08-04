@@ -271,6 +271,7 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	CreateNative("CB_IsCustomBot", Native_CustomBot);
 	CreateNative("CB_GetBotClass", Native_GetBotClass);
 	CreateNative("CB_GetBotOffClass", Native_GetBotOffClass);
+	CreateNative("CB_GetBotIndex", Native_GetBotIndex);
 	return APLRes_Success;
 }
 
@@ -310,6 +311,17 @@ public int Native_GetBotOffClass(Handle plugin, int args)
 		return iBotOffClass[bot];
 	}
 	return 0;
+}
+
+public int Native_GetBotIndex(Handle plugin, int args)
+{
+	int bot = GetNativeCell(1);
+	int index;
+	if (IsCustomBot(bot) && BotIndex[bot] > 0)
+	{
+		index = BotIndex[bot];
+	}
+	return index;
 }
 
 public int Native_SetParamFloat(Handle plugin, int args)
@@ -2189,14 +2201,12 @@ public void ClearNavPositions()
 		if (RJPosExists[i])
 			RJPosExists[i] = false;
 	}
-}
+}//
 
 public Action TF2_CalcIsAttackCritical(int bot, int weapon, char[] weaponname, bool& result)
 {
 	if (IsCustomBot(bot))
 	{
-		//float critchance = GetEntPropFloat(weapon, Prop_Send, "m_flLastCritCheckTime");
-		//PrintToChatAll("Crit Chance: %.1f", critchance);
 		TFClassType class = TF2_GetPlayerClass(bot);
 		int health = GetClientHealth(bot);
 		int jumpsuccess = 1;
@@ -2362,6 +2372,7 @@ stock void DoAntiAim(int client, int aimtype, bool lagComp = true)
 	float angle[3];
 	GetClientEyeAngles(client, angle);
 
+	//Bots shouldn't be affected by lag compensation, but it seems to have a slight affect on accuracy for some reason? Probably just a coincidence but leaving this for now
 	if (lagComp)
 	{
 		SetEntProp(client, Prop_Data, "m_bLagCompensation", true);
@@ -3475,7 +3486,7 @@ stock int GetBotHealthThreshold(int bot)
 	return (RoundToFloor(flHealthThreshold[bot] * maxhp))
 }
 
-stock void SetTargetViewAngles(int bot, bool head = false, bool proj = false, ground = true, bool player = false)
+stock void SetTargetViewAngles(int bot, bool head = false, bool proj = false, ground = true)
 {
 	//TFClassType class = TF2_GetPlayerClass(bot);
 	float aimpos[3], aimangle[3], botpos[3], aimvec[3], angle[3];
@@ -3492,10 +3503,12 @@ stock void SetTargetViewAngles(int bot, bool head = false, bool proj = false, gr
 	if (head)
 	{
 		//GetClientEyePosition(target, aimpos);
-		GetBestHitBox(bot, target, aimpos);
+		GetBestHitBox(bot, target, aimpos, true);
 	}
-	else
-		GetClientAbsOrigin(target, aimpos);
+	else if (!proj)
+	{
+		GetBestHitBox(bot, target, aimpos, false);
+	}
 
 	GetClientEyePosition(bot, botpos);
 	GetClientEyeAngles(bot, angle);
@@ -3503,13 +3516,14 @@ stock void SetTargetViewAngles(int bot, bool head = false, bool proj = false, gr
 	//Is the bot using a projectile weapon, adjust position and lead target
 	if (proj)
 	{
+		GetClientAbsOrigin(target, aimpos);
 		if (!ground)
 			aimpos[2] += 35.0;
 		else
-			aimpos[2] += 3.5;
+			aimpos[2] += 10.5;
 		TryPredictPosition(bot, target, aimpos, botpos, GetProjSpeed(bot))
 	}
-	else if (!head) //otherwise add a bit of variance to cover most of the player's hitbox area
+	else if (!head && Inaccuracy[bot]) //otherwise, if our bot has innacuracy and doesn't aim for the head, add a bit of variance to cover the hitbox area
 	{
 		aimpos[2] += GetRandomFloat(10.0, 60.0);
 		aimpos[1] += GetRandomFloat(-20.0, 20.0);
@@ -3548,16 +3562,19 @@ stock void SetPlayerViewAngles(int client, float angle[3], bool head = false, bo
 	if (head)
 	{
 		//GetClientEyePosition(target, aimpos);
-		GetBestHitBox(client, target, aimpos);
+		GetBestHitBox(client, target, aimpos, true);
 	}
-	else
-		GetClientAbsOrigin(target, aimpos);
+	else if (!proj)
+	{
+		GetBestHitBox(client, target, aimpos, false);
+	}
 
 	GetClientEyePosition(client, botpos);
 
 	//Is the bot using a projectile weapon, adjust position and lead target
 	if (proj)
 	{
+		GetClientAbsOrigin(target, aimpos);
 		if (!ground)
 			aimpos[2] += 35.0;
 		else
