@@ -36,6 +36,7 @@ float HeadShotDelay[MAXPLAYERS+1] = FAR_FUTURE;
 int JumpDelayCount[MAXPLAYERS+1];
 bool IsScoped[MAXPLAYERS+1];
 
+
 bool RoundInProgress = false;
 bool bPointLocked[2048];
 bool ShouldBotHook = false;
@@ -1986,20 +1987,6 @@ public Action PlayerDeath(Handle event, const char[] name, bool dontBroadcast)
 	int bot = GetClientOfUserId(GetEventInt(event, "userid"));
 	int critType = GetEventInt(event, "crit_type");
 
-	if (IsValidClient(attacker))
-	{
-		if (IsFakeClient(attacker))
-		{
-			if (BotIndex[attacker] == 1) //taunt after every kill scout
-			{
-				FakeClientCommand(attacker, "voicemenu 2 6");
-			}
-			if (BotIndex[attacker] == 1000)
-			{
-				FakeClientCommand(attacker, "say Big Chungus");
-			}
-		}
-	}
 	if (IsCustomBot(bot))
 	{
 		//Call OnBotDeath
@@ -2263,15 +2250,6 @@ public Action TF2_CalcIsAttackCritical(int bot, int weapon, char[] weaponname, b
 					{
 						SetTargetViewAngles(bot);
 						AimDelay[bot] = GetEngineTime() + AimDelayAdd[bot];
-					}
-					if (BotIndex[bot] == 1) //lime scout
-					{
-						int crit = GetRandomInt(1, 10);
-						if (crit <= 3)
-						{
-							result = true;
-							return Plugin_Changed;
-						}
 					}
 					JumpDelayCount[bot]--;
 					int jumpchance = GetRandomInt(1, 10);
