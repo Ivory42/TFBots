@@ -1,3 +1,6 @@
+//Currently rewriting with better syntax
+//Future versions will be a bit easier to follow
+
 #include <sourcemod>
 #include <sdktools>
 #include <sdkhooks>
@@ -14,13 +17,17 @@
 #define Address(%1) view_as<Address>(%1)
 #define int(%1) view_as<int>(%1)
 
-//Handle g_waitForCharge;
-//Handle g_hGetBonePosition;
+int g_iOffsetStudioHdr;
+
+Handle g_hLookupBone;
+Handle g_hGetBonePosition;
 Handle g_hWearableEquip;
 Handle g_hGameConfig;
 Handle g_BotQuota;
 Handle g_SpawnBots;
 Handle gravscale;
+Handle g_hSdkEquipWearable;
+bool g_bSdkStarted;
 
 float JumpTimer[MAXPLAYERS+1] = FAR_FUTURE;
 float DoubleJumpTimer[MAXPLAYERS+1] = FAR_FUTURE;
@@ -28,7 +35,6 @@ bool Jump[MAXPLAYERS+1];
 float HeadShotDelay[MAXPLAYERS+1] = FAR_FUTURE;
 int JumpDelayCount[MAXPLAYERS+1];
 bool IsScoped[MAXPLAYERS+1];
-bool cloak = false;
 
 bool RoundInProgress = false;
 bool bPointLocked[2048];
@@ -40,18 +46,20 @@ int iForcedIndex = 0;
 
 float ZeroVec[3] = {0.0, 0.0, 0.0};
 
+//Should probably make all these variable groups into structs...
+
 //Map Navigation Vars
 float RJPos[MAXRJPOS][3];									// Rocket Jump node Position
 float RJAngles[MAXRJPOS][3];								// Rocket Jump node Angles
 float RJDistance[MAXRJPOS];									// Rocket Jump node Radius
-float RJNewAngles[MAXRJPOS][3];								
+float RJNewAngles[MAXRJPOS][3];
 float FallBackPos[MAXFALLBACK][3];							// Fallback node Position
 float NodeRadius[MAXFALLBACK];								// Fallback node Radius
 bool RJPosExists[MAXRJPOS];									// Does this Rocket Jump node exist
 int FallBackIndex[MAXTEAMS];								// Fallback Index for team
 int FallBackTeam[MAXFALLBACK];								// Fallback node corresponding team
-int RJAir[MAXRJPOS];									
-int RJDifficulty[MAXRJPOS];	
+int RJAir[MAXRJPOS];
+int RJDifficulty[MAXRJPOS];
 int RJTeam[MAXRJPOS];										// Rocket Jump node corresponding team
 int RJPosCount;
 int SnipePosCount;
@@ -81,6 +89,8 @@ float AttackRange[MAXPLAYERS+1];
 float flSniperAimTime[MAXPLAYERS+1];
 float flHealthThreshold[MAXPLAYERS+1];
 float flHeightThreshold[MAXPLAYERS+1];
+float NoiseMakerDelay[MAXPLAYERS+1];
+float NoiseMakerDelayAdd[MAXPLAYERS+1];
 int BotIndex[MAXPLAYERS+1];
 int BotAggroTarget[MAXPLAYERS+1];
 int iClassPriority[MAXPLAYERS+1];
@@ -88,6 +98,7 @@ int iBotClass[MAXPLAYERS+1];
 int iBotOffClass[MAXPLAYERS+1];
 int DamageTaken[MAXPLAYERS+1];
 int iAntiAim[MAXPLAYERS+1];
+int NoiseMaker[MAXPLAYERS+1];
 bool bFleeing[MAXPLAYERS+1];
 bool PreferJump[MAXPLAYERS+1];
 bool bIsAttacking[MAXPLAYERS+1];
@@ -114,19 +125,17 @@ float RJForwardTime[MAXPLAYERS+1];
 float RJPreservedAngles[MAXPLAYERS+1][3];
 float RJCooldown[MAXPLAYERS+1];
 float RJDelay[MAXPLAYERS+1];
-//float MovePos[MAXPLAYERS+1][3];
 float flNavDelay[MAXPLAYERS+1];
 bool NavJump[MAXPLAYERS+1];
 bool bInCaptureArea[MAXPLAYERS+1];
 bool bScoutSingleJump[MAXPLAYERS+1];
 bool bIsHookedBot[MAXPLAYERS+1];
+//bool CanSeeTarget[MAXPLAYERS+1];
 
 //Bot Index Vars
 bool IndexTaken[MAXBOTS+1];
 
 char sBotDisconnectMessage[128]; //Message to use for bot disconnect
-
-//int g_iOffsetStudioHdr;
 
 //Forwards
 
@@ -136,6 +145,8 @@ GlobalForward g_BotAttack;
 GlobalForward g_BotJump;
 GlobalForward g_BotRocketJump;
 GlobalForward g_BotTakeDamage;
+
+ConVar g_playerBot;
 
 public Plugin myinfo =
 {
@@ -150,7 +161,6 @@ public void OnPluginStart()
 {
 	HookEvent("teamplay_round_start", RoundStarted);
 	HookEvent("player_death", PlayerDeath, EventHookMode_Post);
-	HookEvent("player_spawn", OnBotSpawn, EventHookMode_Post);
 	HookEvent("post_inventory_application", PlayerResupply, EventHookMode_Post);
 	HookEvent("player_hurt", PlayerHurt, EventHookMode_Pre);
 	HookEvent("player_disconnect", OnPlayerDisconnect, EventHookMode_Pre);
@@ -159,73 +169,91 @@ public void OnPluginStart()
 	HookEvent("player_team", OnPlayerJoinTeam, EventHookMode_Pre);
 	HookEvent("teamplay_round_win", OnRoundEnd, EventHookMode_Pre);
 	HookEvent("teamplay_point_captured", OnPointCapped);
+
+	//Debug commands
 	RegAdminCmd("sm_botjump", RocketJump, ADMFLAG_ROOT);
-	RegAdminCmd("sm_toggle_spy_cloak", SpyCloak, ADMFLAG_ROOT);
 	RegAdminCmd("sm_spawnbot", CMDSpawnBot, ADMFLAG_ROOT);
 	RegAdminCmd("sm_sethp", CMDSetHP, ADMFLAG_ROOT);
+
+	//Nav editor
 	RegAdminCmd("sm_naveditor", CMDCreateNavPoint, ADMFLAG_ROOT);
 	RegAdminCmd("sm_reloadnodes", CMDReloadNodes, ADMFLAG_ROOT);
-	//g_waitForCharge = CreateConVar("tf_sniper_wait_for_charge", "0", "Sniper Bots will wait until sufficient charge to shoot");
+
+	//Convars
 	g_SpawnBots = CreateConVar("tf_bot_allow_join", "0", "Can TFBots randomly join and leave the server");
 	g_BotQuota = FindConVar("tf_bot_quota");
 	gravscale = FindConVar("sv_gravity");
-	
-	//Forwards
+
+	//Forwards.. some of these are a bit useless, will probably rework forwards at a future date
 	g_BotResupply = new GlobalForward("CB_OnBotResupply", ET_Ignore, Param_Cell, Param_Cell, Param_Cell);
 	g_BotAttack = new GlobalForward("CB_OnBotAttack", ET_Event, Param_Cell, Param_Cell, Param_Cell, Param_Cell, Param_Cell);
 	g_BotDeath = new GlobalForward("CB_OnBotDeath", ET_Ignore, Param_Cell, Param_Cell, Param_Cell, Param_Cell, Param_Cell);
 	g_BotJump = new GlobalForward("CB_OnBotJump", ET_Ignore, Param_Cell, Param_Cell, Param_Cell);
 	g_BotRocketJump = new GlobalForward("CB_OnBotBlastJump", ET_Ignore, Param_Cell, Param_Cell, Param_Cell, Param_Cell);
 	g_BotTakeDamage = new GlobalForward("CB_OnBotTakeDamage", ET_Single, Param_Cell, Param_Cell, Param_Cell, Param_Any, Param_Cell, Param_Cell, Param_Cell);
-	
+
+	//debug for testing bot aim
+	g_playerBot = CreateConVar("tf_bot_allow_player_aim", "0", "Allow players to aim like bots");
+
 	GenerateDirectories();
-	
+
+	//Hook join message
 	HookUserMessage(GetUserMessageId("SayText2"), UserMessage_SayText2, true);
-	
-	//StartPrepSDKCall(SDKCall_Entity);
-	//PrepSDKCall_SetSignature(SDKLibrary_Server, "\x55\x8B\xEC\x83\xEC\x30\x56\x8B\xF1\x80\xBE\x41\x03\x00\x00\x00", 16);
-	//PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain);
-	//PrepSDKCall_AddParameter(SDKType_Vector, SDKPass_ByRef, _, VENCODE_FLAG_COPYBACK);
-	//PrepSDKCall_AddParameter(SDKType_QAngle, SDKPass_ByRef, _, VENCODE_FLAG_COPYBACK);
-	
+
+	//SDKCalls
+
+	//Bone names and positions in the world
+	StartPrepSDKCall(SDKCall_Entity);
+	PrepSDKCall_SetSignature(SDKLibrary_Server, "\x55\x8B\xEC\x56\x8B\xF1\x80\xBE\x41\x03\x00\x00\x00\x75\x2A\x83\xBE\x6C\x04\x00\x00\x00\x75\x2A\xE8\x2A\x2A\x2A\x2A\x85\xC0\x74\x2A\x8B\xCE\xE8\x2A\x2A\x2A\x2A\x8B\x86\x6C\x04\x00\x00\x85\xC0\x74\x2A\x83\x38\x00\x74\x2A\xFF\x75\x08\x50\xE8\x2A\x2A\x2A\x2A\x83\xC4\x08\x5E", 68);
+	PrepSDKCall_AddParameter(SDKType_String, SDKPass_Pointer);
+	PrepSDKCall_SetReturnInfo(SDKType_PlainOldData, SDKPass_Plain);
+	if ((g_hLookupBone = EndPrepSDKCall()) == INVALID_HANDLE)SetFailState("Failed to create SDKCall for CBaseAnimating::LookupBone signature!");
+
+	StartPrepSDKCall(SDKCall_Entity);
+	PrepSDKCall_SetSignature(SDKLibrary_Server, "\x55\x8B\xEC\x83\xEC\x30\x56\x8B\xF1\x80\xBE\x41\x03\x00\x00\x00", 16);
+	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain);
+	PrepSDKCall_AddParameter(SDKType_Vector, SDKPass_ByRef, _, VENCODE_FLAG_COPYBACK);
+	PrepSDKCall_AddParameter(SDKType_QAngle, SDKPass_ByRef, _, VENCODE_FLAG_COPYBACK);
+	if ((g_hGetBonePosition = EndPrepSDKCall()) == INVALID_HANDLE)SetFailState("Failed to create SDKCall for CBaseAnimating::GetBonePosition signature!");
+
+	g_iOffsetStudioHdr = FindSendPropInfo("CBaseAnimating", "m_flFadeScale") + 28;
+	PrintToServer("g_iOffsetStudioHdr %i", g_iOffsetStudioHdr);
+
 	//Cosmetics
-	g_hGameConfig = LoadGameConfigFile("give.bots.cosmetics");
-	
+	g_hGameConfig = LoadGameConfigFile("Bots.Wearables");
+
 	if (!g_hGameConfig)
 	{
-		SetFailState("Failed to find give.bots.cosmetics.txt gamedata! Can't continue.");
-	}	
-	
+		SetFailState("Failed to find Bots.Wearables.txt gamedata! Can't continue.");
+	}
+
 	StartPrepSDKCall(SDKCall_Player);
 	PrepSDKCall_SetFromConf(g_hGameConfig, SDKConf_Virtual, "EquipWearable");
 	PrepSDKCall_AddParameter(SDKType_CBaseEntity, SDKPass_Pointer);
 	g_hWearableEquip = EndPrepSDKCall();
-	
+
 	if (!g_hWearableEquip)
 	{
 		SetFailState("Failed to prepare the SDKCall for giving cosmetics. Try updating gamedata or restarting your server.");
 	}
-	
-	//if ((g_hGetBonePosition = EndPrepSDKCall()) == INVALID_HANDLE)
-		//SetFailState("Failed to create SDKCall for CBaseAnimating::GetBonePosition signature!");
-	
+
 	for (new i = 1; i <= MaxClients; i++)
 	{
 		if (IsValidClient(i))
 			OnClientPutInServer(i);
 	}
-	
+
 }
 
 public void GenerateDirectories()
 {
 	char sPath[64];
 	BuildPath(Path_SM, sPath, sizeof sPath, "configs/navpoints/");
-	
+
 	if (!DirExists(sPath))
 	{
 		CreateDirectory(sPath, 511);
-		
+
 		if (!DirExists(sPath)) //Failed to create directory
 			SetFailState("Failed to create navpoints directory (configs/navpoints/) - Please manually create this path");
 	}
@@ -288,7 +316,7 @@ public int Native_SetParamFloat(Handle plugin, int args)
 	int bot = GetNativeCell(1);
 	float value = GetNativeCell(2);
 	CBParamType param = GetNativeCell(3);
-	
+
 	if (IsCustomBot(bot))
 	{
 		switch (param)
@@ -313,7 +341,7 @@ public int Native_SetParamInt(Handle plugin, int args)
 	int bot = GetNativeCell(1);
 	int value = GetNativeCell(2);
 	CBParamType param = GetNativeCell(3);
-	
+
 	if (IsCustomBot(bot))
 	{
 		switch (param)
@@ -334,7 +362,7 @@ public int Native_SetParamBool(Handle plugin, int args)
 	int bot = GetNativeCell(1);
 	bool value = GetNativeCell(2);
 	CBParamType param = GetNativeCell(3);
-	
+
 	if (IsCustomBot(bot))
 	{
 		switch (param)
@@ -351,7 +379,7 @@ public int Native_SetParamBool(Handle plugin, int args)
 public int Native_HookBot(Handle plugin, int args)
 {
 	int bot = GetNativeCell(1);
-	
+
 	if (IsValidClient(bot))
 	{
 		if (IsFakeClient(bot))
@@ -369,17 +397,17 @@ public int Native_HookBot(Handle plugin, int args)
 public int Native_CustomBot(Handle plugin, int args)
 {
 	int bot = GetNativeCell(1);
-	
+
 	if (IsCustomBot(bot))
 		return true;
-	
+
 	return false;
 }
 
 /******************************************************************************
 
 	CP/AD CAPTURE POINT TRACKING
-	
+
 ******************************************************************************/
 
 public Action OnPointCapped(Handle cpEvent, const char[] name, bool dontBroadcast)
@@ -453,10 +481,10 @@ public bool IsControlPoints()
 {
 	char sMap[64];
 	GetCurrentMap(sMap, sizeof sMap);
-	
+
 	if (StrContains(sMap, "cp_") != -1 && b5CPMap)
 		return true;
-		
+
 	return false;
 }
 
@@ -465,7 +493,17 @@ public bool IsControlPoints()
 /*------------------------------------------------------------------------
 
 	NAVIGATION EDITOR
-	
+	Wowie, this was a trip to get working
+	-This allows users to manually set positions for bots to perform actions
+	-Rocket Jump Nodes allow soldiers to rocket jump with given view angles (bots can now do rollouts!)
+	-Sniper positions are pretty self explanatory
+	-Fallback nodes are meant for 5CP and can only be accessed on 5CP maps
+		- These nodes will be where bots fallback to when they decide they don't have enough teammates alive to contest the other team
+
+	TODO:
+		-Add engineer nodes and maybe even sticky jumping nodes... maybe
+		-Implement difficulty values for rocket jump nodes so not all soldier bots perform the same jumps
+
 ------------------------------------------------------------------------*/
 
 public Action CMDReloadNodes(int client, int args)
@@ -474,7 +512,7 @@ public Action CMDReloadNodes(int client, int args)
 	char sFallBack[64] = "";
 	GetCurrentMap(sMap, sizeof sMap);
 	ReloadNodes();
-	
+
 	if (IsControlPoints())
 		Format(sFallBack, sizeof sFallBack, "\n - %i Fallback Positions found", FallBackCount);
 
@@ -593,7 +631,7 @@ public Action CreateNavPointMenu(int client, CBNavType NavType)
 	NavPoint.AddItem("pos", "Position: Copy Position");
 	if (NavType == CBNavType_RocketJump)
 		NavPoint.AddItem("angle", "Angles: Copy ViewAngles");
-		
+
 	NavPoint.AddItem("continue", "Continue", CanProceedMenu(client, NavType) ? ITEMDRAW_DEFAULT : ITEMDRAW_DISABLED);
 	NavPoint.AddItem("-1", "Back");
 	SetMenuExitButton(NavPoint, true);
@@ -679,7 +717,7 @@ public int NavTargetCallback(Menu menu, MenuAction action, int client, int param
 			{
 				switch (CurrentNavType[client])
 				{
-					case CBNavType_RocketJump: 
+					case CBNavType_RocketJump:
 					{
 						SetNavRadius(client);
 					}
@@ -889,7 +927,7 @@ public void PrepareNavInfo(int client)
 {
 	char sMapName[64];
 	GetCurrentMap(sMapName, sizeof sMapName);
-	
+
 	WriteNodeToKv(client, sMapName, CurrentNavType[client], NavPosition[client], NavTeam[client], NavAngles[client], NavTargetAngles[client], NavRadius[client], NavAir[client], NavDifficulty[client]);
 }
 
@@ -907,21 +945,21 @@ public void ResetNavInfo(int client)
 }
 
 stock void WriteNodeToKv(int client, char[] mapname, CBNavType NavType, float pos[3], int iTeam, float angles[3] = {0.0, 0.0, 0.0}, float targetangles[3] = {0.0, 0.0, 0.0}, float radius = 100.0, int air = 0, int diff = 0)
-{	
+{
 	KeyValues kv = new KeyValues("NavPoints");
 	char sPath[64];
 	BuildPath(Path_SM, sPath, sizeof sPath, "configs/navpoints/%s.txt", mapname);
-	
+
 	if (!FileExists(sPath))
 	{
 		Handle fFile = OpenFile(sPath, "w");
 		CloseHandle(fFile);
 	}
 	kv.ImportFromFile(sPath);
-	
+
 	int NavPoints;
 	char sNavId[8];
-	
+
 	switch (NavType)
 	{
 		case CBNavType_SniperPos:
@@ -936,12 +974,12 @@ stock void WriteNodeToKv(int client, char[] mapname, CBNavType NavType, float po
 				return;
 			}
 			IntToString(NavPoints, sNavId, sizeof sNavId);
-			
+
 			//Create new position
 			kv.JumpToKey(sNavId, true);
 			kv.SetVector("pos", pos);
 			kv.SetNum("team", iTeam);
-			
+
 			kv.Rewind();
 			kv.ExportToFile(sPath);
 			delete kv;
@@ -960,7 +998,7 @@ stock void WriteNodeToKv(int client, char[] mapname, CBNavType NavType, float po
 				return;
 			}
 			IntToString(NavPoints, sNavId, sizeof sNavId);
-			
+
 			//Create new position
 			kv.JumpToKey(sNavId, true);
 			kv.SetVector("pos", pos);
@@ -970,7 +1008,7 @@ stock void WriteNodeToKv(int client, char[] mapname, CBNavType NavType, float po
 			kv.SetNum("Air", air);
 			kv.SetNum("Difficulty", diff);
 			kv.SetNum("team", iTeam);
-			
+
 			kv.Rewind();
 			kv.ExportToFile(sPath);
 			delete kv;
@@ -989,13 +1027,13 @@ stock void WriteNodeToKv(int client, char[] mapname, CBNavType NavType, float po
 				return;
 			}
 			IntToString(NavPoints, sNavId, sizeof sNavId);
-			
+
 			//Create new position
 			kv.JumpToKey(sNavId, true);
 			kv.SetVector("pos", pos);
 			kv.SetFloat("radius", radius);
 			kv.SetNum("team", iTeam);
-			
+
 			kv.Rewind();
 			kv.ExportToFile(sPath);
 			delete kv;
@@ -1009,21 +1047,21 @@ stock void WriteNodeToKv(int client, char[] mapname, CBNavType NavType, float po
 }
 
 stock int GetNavPoints(const char[] currentMap, CBNavType NavType)
-{	
+{
 	KeyValues kv = new KeyValues("NavPoints");
 	char sPath[PLATFORM_MAX_PATH];
 	BuildPath(Path_SM, sPath, sizeof sPath, "configs/navpoints/%s.txt", currentMap);
-	
+
 	if (!FileExists(sPath))
 	{
 		Handle fFile = OpenFile(sPath, "w");
 		CloseHandle(fFile);
 	}
-	
+
 	kv.ImportFromFile(sPath);
-	
+
 	int count = 0;
-	
+
 	char sNavId[8];
 	switch (NavType)
 	{
@@ -1136,7 +1174,7 @@ public Action OnPlayerJoinTeam(Handle event, const char[] name, bool dontBroadca
 	//char strTeamName[32];
 	//GetTeamName(iClient, strTeamName, sizeof strTeamName);
 	char botname[64];
-	
+
 	if (IsCustomBot(iClient) && iClient != 0)
 	{
 		if (BotIndex[iClient] > 0)
@@ -1145,7 +1183,7 @@ public Action OnPlayerJoinTeam(Handle event, const char[] name, bool dontBroadca
 			//PrintToChatAll("%s was automatically assigned to team %s", botname, strTeamName);
 			SetEventBroadcast(event, true);
 		}
-	}	
+	}
 	return Plugin_Continue;
 }
 
@@ -1193,9 +1231,9 @@ public void OnMapStart()
 
 	kv.GetString("message", sBotDisconnectMessage, sizeof sBotDisconnectMessage, "Kicked from server");
 	delete kv;
-	
+
 	b5CPMap = FindControlPoints();
-	
+
 	CreateTimer(35.0, TimerCheckPlayers, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 }
 
@@ -1209,7 +1247,7 @@ public bool FindControlPoints()
 	}
 	if (count >= 5)
 		return true;
-	
+
 	return false;
 }
 
@@ -1287,7 +1325,7 @@ public void OnClientPutInServer(int client)
 		HeadShotDelay[client] = FAR_FUTURE;
 		if (ShouldBotHook)
 			BotIndex[client] = GetFreeBotIndex(iForcedIndex);
-		
+
 		//PrintToChatAll("index = %i", BotIndex[client]);
 		if (BotIndex[client])
 		{
@@ -1304,45 +1342,45 @@ public Action SetBotVars(Handle bTimer, int bot)
 		if (BotIndex[bot] > 0)
 		{
 			KeyValues kv = new KeyValues("BotIndexes");
-			
+
 			char sPath[PLATFORM_MAX_PATH];
 			BuildPath(Path_SM, sPath, sizeof sPath, "configs/botindexes.txt");
 			kv.ImportFromFile(sPath);
-			
+
 			char sBotIndex[8];
 			IntToString(BotIndex[bot], sBotIndex, sizeof sBotIndex);
-			
+
 			if (!kv.JumpToKey(sBotIndex))
 			{
 				//PrintToChatAll("Could not find bot index: %i", BotIndex[bot]);
 				delete kv;
 				return;
 			}
-			
+
 			kv.GetString("name", sBotName[bot], MAX_NAME_LENGTH);
 			SetClientInfo(bot, "name", sBotName[bot]);
 			PrintToChatAll("%s has joined the game", sBotName[bot]);
 			PrintToChatAll("%s was automatically assigned to team %s", sBotName[bot], (GetClientTeam(bot) == 2) ? "RED" : "BLU");
-			
+
 			//Set bot behavior
 			AimDelayAdd[bot] = kv.GetFloat("aimdelay", 0.0); //Cooldown on autoaim usage
 			AimFOV[bot] = kv.GetFloat("aimfov", 180.0); //FoV for target acquisition
 			Inaccuracy[bot] = kv.GetFloat("inaccuracy", 0.0); //deviation to add onto autoaim
-			
+
 			AggroDelay[bot] = kv.GetFloat("aggrotime", 0.0); //How long a target is aggro'd for
 			iClassPriority[bot] = kv.GetNum("prioritize"); //Class priority
 			AttackRange[bot] = kv.GetFloat("range", 800.0); //Preferred combat range
-			
+
 			flSniperAimTime[bot] = kv.GetFloat("aimtime", 1.0); //Steady rate for snipers
 			flHealthThreshold[bot] = kv.GetFloat("health_threshold", 0.2); //Health threshold for when bots will try to flee
-			
+
 			flHeightThreshold[bot] = kv.GetFloat("height", 0.0); //Soldier height threshold
-			
+
 			if (kv.GetNum("preferjump") == 1)
 				PreferJump[bot] = true;
 			else
 				PreferJump[bot] = false;
-			
+
 			delete kv;
 			return;
 		}
@@ -1352,20 +1390,20 @@ public Action SetBotVars(Handle bTimer, int bot)
 stock char[] GetBotName(int bot, char[] botname, int buffer)
 {
 	KeyValues kv = new KeyValues("BotIndexes");
-	
+
 	char sPath[PLATFORM_MAX_PATH];
 	BuildPath(Path_SM, sPath, sizeof sPath, "configs/botindexes.txt");
 	kv.ImportFromFile(sPath);
-	
+
 	char sBotIndex[8];
 	IntToString(BotIndex[bot], sBotIndex, sizeof sBotIndex);
-	
+
 	if (!kv.JumpToKey(sBotIndex))
 	{
 		delete kv;
 		return;
 	}
-	
+
 	kv.GetString("name", botname, buffer);
 	delete kv;
 }
@@ -1376,7 +1414,7 @@ stock int GetFreeBotIndex(int iIndex = 0)
 	{
 		if (iIndex < MAXBOTS)
 			IndexTaken[iIndex] = true;
-			
+
 		iForcedIndex = 0;
 		return iIndex;
 	}
@@ -1393,7 +1431,7 @@ stock int GetFreeBotIndex(int iIndex = 0)
 				{
 					foundindex = true;
 					IndexTaken[index] = true;
-					
+
 					iForcedIndex = 0;
 					return index;
 				}
@@ -1436,6 +1474,7 @@ public void ClearBotVars(int client)
 		bFleeing[client] = false;
 		flSniperAimTime[client] = 1.0;
 		flHealthThreshold[client] = 0.2;
+		NoiseMaker[client] = 0;
 	}
 }
 
@@ -1455,14 +1494,14 @@ public bool IndexSlotsFree()
 public bool BotPresetExists(int preset)
 {
 	KeyValues kv = new KeyValues("BotIndexes");
-	
+
 	char sPath[PLATFORM_MAX_PATH];
 	BuildPath(Path_SM, sPath, sizeof sPath, "configs/botindexes.txt");
 	kv.ImportFromFile(sPath);
-	
+
 	char sBotIndex[8];
 	IntToString(preset, sBotIndex, sizeof sBotIndex);
-	
+
 	if (kv.JumpToKey(sBotIndex))
 	{
 		delete kv;
@@ -1486,7 +1525,6 @@ public Action RocketJump(int bot, int args)
 public Action PlayerResupply(Handle EventH, const char[] name, bool dontBroadcast)
 {
 	int bot = GetClientOfUserId(GetEventInt(EventH, "userid"));
-	int weapon = GetEntPropEnt(bot, Prop_Send, "m_hActiveWeapon");
 
 	if (IsCustomBot(bot))
 	{
@@ -1495,27 +1533,16 @@ public Action PlayerResupply(Handle EventH, const char[] name, bool dontBroadcas
 			SetupLoadout(bot, class);
 		else if (bIsHookedBot[bot])
 			SetBotClass(bot, iBotClass[bot], iBotOffClass[bot]);
-			
+
 		//Call Resupply Forward
 		Call_StartForward(g_BotResupply);
-		
+
 		Call_PushCell(bot);
 		Call_PushCell(BotIndex[bot]);
 		Call_PushCell(bIsHookedBot[bot]);
-		
+
 		Call_Finish();
 	}
-	if (cloak)
-	{
-		TF2Attrib_SetByName(weapon, "fire rate bonus", 0.15);
-	}
-	return Plugin_Continue;
-}
-
-public Action SpyCloak(int bot, int args)
-{
-	cloak = !cloak;
-	PrintToChatAll("toggled spy auto cloak");
 	return Plugin_Continue;
 }
 
@@ -1563,30 +1590,20 @@ public Action CMDSetHP(int client, int args)
 	return Plugin_Handled;
 }
 
-public Action OnBotSpawn(Handle hEvent, const char[] name, bool dontBroadcast)
-{
-	int bot = GetClientOfUserId(GetEventInt(hEvent, "userid"));
-	if (TF2_GetPlayerClass(bot) == TFClass_Spy && cloak)
-	{
-		TF2_AddCondition(bot, TFCond_Cloaked, 10.0);
-	}
-	return Plugin_Continue;
-}
-
 public int SetBotClass(int bot, int class, int offclass)
 {
 	if (GetRandomInt(1, 100) <= 35)
 		class = offclass;
-			
+
 	if (class == 5) //Medics
 	{
 		if (GetPlayersOnTeam(GetClientTeam(bot)) < 3)
 			class = offclass;
 	}
-	
+
 	SetEntProp(bot, Prop_Send, "m_iDesiredPlayerClass", class);
-	TF2_SetPlayerClass(bot, class);
-	
+	TF2_SetPlayerClass(bot, view_as<TFClassType>(class));
+
 	return class;
 }
 
@@ -1597,76 +1614,82 @@ public void SetupLoadout(int bot, TFClassType class)
 		if (BotIndex[bot] > 0)
 		{
 			KeyValues kv = new KeyValues("BotIndexes");
-			
+
 			char sPath[PLATFORM_MAX_PATH];
 			BuildPath(Path_SM, sPath, sizeof sPath, "configs/botindexes.txt");
 			kv.ImportFromFile(sPath);
-			
+
 			char sBotIndex[8];
 			IntToString(BotIndex[bot], sBotIndex, sizeof sBotIndex);
-			
+
 			char pWeaponName[64]; //Primary classname
 			char sWeaponName[64]; //Secondary classname
 			char mWeaponName[64]; //Melee classname
-			
+
 			//Class Settings
 			char sClassName[64];
-			
+
 			//Item Indexes
 			int pWeapon, sWeapon, mWeapon, hat, cosmetic1, cosmetic2;
-			
+
 			//Primary attribs
 			int pEffect, pKillstreak, pAussie, pSheen, pKEffect; //pUnusual;
-			
+
 			//Secondary attribs
 			int sEffect, sKillstreak, sAussie, sSheen, sKEffect; // sUnusual;
-			
+
 			//Melee attribs
 			int mEffect, mKillstreak, mAussie, mSheen, mKEffect; //mUnusual;
-			
+
 			//Hat attribs
 			int HatEffect, HatPaintR, HatPaintB;
-			
+
 			//Cosmetic1 attribs
 			int cEffect1, cPaint1R, cPaint1B;
-			
+
 			//Cosmetic2 attribs
 			int cEffect2, cPaint2R, cPaint2B;
-			
-			
+
+
 			if (!kv.JumpToKey(sBotIndex))
 			{
 				//PrintToChatAll("Could not find bot index: %i", BotIndex[bot]);
 				delete kv;
 				return;
 			}
-			
+
 			// Do we prefer melee
 			if (kv.GetNum("melee") == 1)
 				bPreferMelee[bot] = true;
 			else
 				bPreferMelee[bot] = false;
-			
+
 			// Do we prefer to shoot ground positions
 			if (kv.GetNum("aimground") == 1)
 				bAimGround[bot] = true;
 			else
 				bAimGround[bot] = false;
-			
+
 			iBotClass[bot] = kv.GetNum("class");
 			iBotOffClass[bot] = kv.GetNum("offclass");
-			
+
 			int SelectedClass = SetBotClass(bot, iBotClass[bot], iBotOffClass[bot]);
-			
+
 			GetLiteralClassName(SelectedClass, sClassName, sizeof sClassName);
-			
+
 			if (StrEqual(sClassName, "sniper"))
 				AttackRange[bot] *= 50.0;
 			else
 				AttackRange[bot] = GetBotAttackRange(bot);
-			
+
 			iAntiAim[bot] = kv.GetNum("antiaim", 0);
-			
+
+			if (kv.GetNum("noisemaker") > 0)
+			{
+				NoiseMaker[bot] = kv.GetNum("noisemaker");
+				NoiseMakerDelayAdd[bot] = kv.GetFloat("noisemaker_delay", 1.0);
+			}
+
 			//Select proper class loadout
 			if (kv.JumpToKey(sClassName))
 			{
@@ -1685,13 +1708,13 @@ public void SetupLoadout(int bot, TFClassType class)
 						pAussie = kv.GetNum("aussie", 0);
 						pSheen = kv.GetNum("sheen", 0);
 						pKEffect = kv.GetNum("kEffect", 0);
-						
+
 						TF2_RemoveWeaponSlot(bot, TFWeaponSlot_Primary);
 						if(StrContains(pWeaponName, "tf_wearable" , false) != -1)
 							CreateHat(bot, pWeapon);
 						else
 							SpawnBotWeapon(bot, pWeaponName, pWeapon, pEffect, pKillstreak, pAussie, pSheen, pKEffect, 0);
-						
+
 						//PrintToChatAll("Found primary weapon with index: %i\nAttributes:\n - Killstreak: %i\n - Sheen: %i\n - KEffect: %i\n - Aussie: %i\n - Effect: %i", pWeapon, pKillstreak, pSheen, pKEffect, pAussie, pEffect);
 						kv.GoBack();
 					}
@@ -1706,13 +1729,13 @@ public void SetupLoadout(int bot, TFClassType class)
 						sAussie = kv.GetNum("aussie", 0);
 						sSheen = kv.GetNum("sheen", 0);
 						sKEffect = kv.GetNum("kEffect", 0);
-						
+
 						TF2_RemoveWeaponSlot(bot, TFWeaponSlot_Secondary);
 						if (StrContains(sWeaponName, "tf_wearable" , false) != -1)
 							CreateHat(bot, sWeapon);
-						else 
+						else
 							SpawnBotWeapon(bot, sWeaponName, sWeapon, sEffect, sKillstreak, sAussie, sSheen, sKEffect, 1);
-							
+
 						kv.GoBack();
 					}
 					if (kv.JumpToKey("melee"))
@@ -1725,13 +1748,13 @@ public void SetupLoadout(int bot, TFClassType class)
 						mAussie = kv.GetNum("aussie", 0);
 						mSheen = kv.GetNum("sheen", 0);
 						mKEffect = kv.GetNum("kEffect", 0);
-						
+
 						TF2_RemoveWeaponSlot(bot, TFWeaponSlot_Melee);
 						if (StrContains(mWeaponName, "tf_wearable" , false) != -1)
 							CreateHat(bot, mWeapon);
 						else
 							SpawnBotWeapon(bot, mWeaponName, mWeapon, mEffect, mKillstreak, mAussie, mSheen, mKEffect, 2);
-							
+
 						kv.GoBack();
 					}
 					kv.GoBack();
@@ -1746,7 +1769,7 @@ public void SetupLoadout(int bot, TFClassType class)
 						HatEffect = kv.GetNum("effect", 0);
 						HatPaintR = kv.GetNum("paint", 0);
 						HatPaintB = kv.GetNum("paint2", 0);
-						
+
 						CreateHat(bot, hat, _, _, HatEffect, HatPaintR, HatPaintB);
 						kv.GoBack();
 					}
@@ -1757,7 +1780,7 @@ public void SetupLoadout(int bot, TFClassType class)
 						cEffect1 = kv.GetNum("effect");
 						cPaint1R = kv.GetNum("paint");
 						cPaint1B = kv.GetNum("paint2");
-						
+
 						CreateHat(bot, cosmetic1, _, _, cEffect1, cPaint1R, cPaint1B);
 						kv.GoBack();
 					}
@@ -1768,7 +1791,7 @@ public void SetupLoadout(int bot, TFClassType class)
 						cEffect2 = kv.GetNum("effect");
 						cPaint2R = kv.GetNum("paint");
 						cPaint2B = kv.GetNum("paint2");
-						
+
 						CreateHat(bot, cosmetic2, _, _, cEffect2, cPaint2R, cPaint2B);
 						kv.Rewind();
 						delete kv;
@@ -1786,7 +1809,7 @@ public void SetupLoadout(int bot, TFClassType class)
 			delete kv;
 			return;
 		}
-		
+
 		//Regular TFBots
 		int chance = GetRandomInt(1, 100);
 		switch (class)
@@ -1796,20 +1819,20 @@ public void SetupLoadout(int bot, TFClassType class)
 				if (chance <= 50)
 				{
 					TF2_RemoveWeaponSlot(bot, TFWeaponSlot_Primary);
-					SpawnWeapon2(bot, "tf_weapon_rocketlauncher_directhit", 127, 1, 6, "", 1, true);
+					CreateWeapon(bot, "tf_weapon_rocketlauncher_directhit", 127, 1, 6, "", true, true);
 				}
 				TF2_RemoveWeaponSlot(bot, TFWeaponSlot_Melee);
-				SpawnWeapon2(bot, "tf_weapon_shovel", 416, 1, 6, "", 1, true);
+				CreateWeapon(bot, "tf_weapon_shovel", 416, 1, 6, "", true, true);
 			}
 			case TFClass_Medic:
 			{
 				if (chance <= 50)
 				{
 					TF2_RemoveWeaponSlot(bot, TFWeaponSlot_Secondary);
-					SpawnWeapon2(bot, "tf_weapon_medigun", 35, 1, 6, "", 1, true);
+					CreateWeapon(bot, "tf_weapon_medigun", 35, 1, 6, "", true, true);
 				}
 				TF2_RemoveWeaponSlot(bot, TFWeaponSlot_Primary);
-				SpawnWeapon2(bot, "tf_weapon_crossbow", 305, 1, 6, "", 1, true);
+				CreateWeapon(bot, "tf_weapon_crossbow", 305, 1, 6, "", true, true);
 			}
 			case TFClass_Scout:
 			{
@@ -1829,12 +1852,12 @@ stock void SpawnBotWeapon(int bot, char[] classname, int index, int effect, int 
 	if (IsValidClient(bot) && IsFakeClient(bot))
 	{
 		TF2_RemoveWeaponSlot(bot, WeaponSlot);
-		int bot_wep = SpawnWeapon2(bot, classname, index, 1, quality, "", 1, true);
+		int bot_wep = CreateWeapon(bot, classname, index, 1, quality, "", true, true);
 		if (IsValidEntity(bot_wep) && bot_wep > MaxClients)
 		{
 			if (effect != 0)
 				TF2Attrib_SetByDefIndex(bot_wep, 134, float(effect));
-				
+
 			if (killstreak != 0)
 			{
 				TF2Attrib_SetByName(bot_wep, "killstreak tier", 1.0);
@@ -1843,12 +1866,12 @@ stock void SpawnBotWeapon(int bot, char[] classname, int index, int effect, int 
 				if (kEffect != 0)
 					TF2Attrib_SetByDefIndex(bot_wep, 2013, float(kEffect));
 			}
-			
+
 			if (aussie == 1)
 			{
 				//PrintToChatAll("Aussie Weapon");
 				TF2Attrib_SetByName(bot_wep, "is australium item", 1.0);
-				TF2Attrib_SetByName(bot_wep, "item style override", 1.0);	
+				TF2Attrib_SetByName(bot_wep, "item style override", 1.0);
 			}
 		}
 		TF2_SwitchToSlot(bot, WeaponSlot);
@@ -1894,9 +1917,9 @@ public Action OnTakeDamage(int bot, int &attacker, int &inflictor, float &damage
 			float newDamage = damage;
 			if (damagetype == DMG_CRIT)
 				IsCritical = true;
-				
+
 			Call_StartForward(g_BotTakeDamage);
-			
+
 			Call_PushCell(bot);
 			Call_PushCell(BotIndex[bot]);
 			Call_PushCell(bIsHookedBot[bot]);
@@ -1904,9 +1927,9 @@ public Action OnTakeDamage(int bot, int &attacker, int &inflictor, float &damage
 			Call_PushCell(IsCritical);
 			Call_PushCell(attacker);
 			Call_PushCell(inflictor);
-			
+
 			Call_Finish(newDamage);
-			
+
 			damage = newDamage;
 			return Plugin_Changed;
 		}
@@ -1918,12 +1941,12 @@ public Action PlayerHurt(Handle pEvent, const char[] name, bool dontBroadcast)
 {
 	//int attacker = GetClientOfUserId(GetEventInt(pEvent, "attacker"));
 	int victim = GetClientOfUserId(GetEventInt(pEvent, "userid"));
-	
+
 	if (IsValidClient(victim))
 	{
 		if (IsCustomBot(victim))
 			CallMedicDelay[victim] = GetEngineTime() + (GetRandomFloat(1.0, 6.0));
-		
+
 		int damage = GetEventInt(pEvent, "damageamount");
 		DamageTaken[victim] += damage;
 		DamageDelay[victim] = GetEngineTime() + 1.0;
@@ -1935,7 +1958,7 @@ public Action PlayerHurt(Handle pEvent, const char[] name, bool dontBroadcast)
 public Action OnPlayerDisconnect(Handle dEvent, const char[] name, bool dontBroadcast)
 {
 	int bot = GetClientOfUserId(GetEventInt(dEvent, "userid"));
-	
+
 	if (IsCustomBot(bot))
 	{
 		char sName[64];
@@ -1949,7 +1972,7 @@ public Action OnPlayerDisconnect(Handle dEvent, const char[] name, bool dontBroa
 public Action OnNameChange(Handle nEvent, const char[] name, bool dontBroadcast)
 {
 	int bot = GetClientOfUserId(GetEventInt(nEvent, "userid"));
-	
+
 	if (IsCustomBot(bot))
 	{
 		SetEventBroadcast(nEvent, true);
@@ -1963,11 +1986,6 @@ public Action PlayerDeath(Handle event, const char[] name, bool dontBroadcast)
 	int bot = GetClientOfUserId(GetEventInt(event, "userid"));
 	int critType = GetEventInt(event, "crit_type");
 
-	//Catbot respawn
-	if (cloak && TF2_GetPlayerClass(bot) == TFClass_Spy)
-	{
-		CreateTimer(0.1, RespawnCatBot, bot);
-	}
 	if (IsValidClient(attacker))
 	{
 		if (IsFakeClient(attacker))
@@ -1976,27 +1994,26 @@ public Action PlayerDeath(Handle event, const char[] name, bool dontBroadcast)
 			{
 				FakeClientCommand(attacker, "voicemenu 2 6");
 			}
+			if (BotIndex[attacker] == 1000)
+			{
+				FakeClientCommand(attacker, "say Big Chungus");
+			}
 		}
 	}
 	if (IsCustomBot(bot))
 	{
 		//Call OnBotDeath
 		Call_StartForward(g_BotDeath);
-	
+
 		Call_PushCell(bot);
 		Call_PushCell(BotIndex[bot]);
 		Call_PushCell(bIsHookedBot[bot]);
 		Call_PushCell(attacker);
 		Call_PushCell(critType);
-	
+
 		Call_Finish();
 	}
 	return Plugin_Continue;
-}
-
-public Action RespawnCatBot(Handle Timer, int bot)
-{
-	TF2_RespawnPlayer(bot);
 }
 
 stock float[] moveForward(float vel[3], float MaxSpeed)
@@ -2042,7 +2059,7 @@ public Action ClientTimer(Handle Timer, int bot)
 {
 	if (!RoundInProgress || !IsValidClient(bot) || !IsCustomBot(bot))
 		return Plugin_Stop;
-		
+
 	if (PathObstructed(bot))
 	{
 		JumpTimer[bot] = GetEngineTime() + 0.2;
@@ -2066,19 +2083,19 @@ public void ReloadNodes()
 	char currentMap[PLATFORM_MAX_PATH];
 	char sFallback[64] = "";
 	GetCurrentMap(currentMap, sizeof(currentMap));
-	
+
 	char sPath[PLATFORM_MAX_PATH];
 	BuildPath(Path_SM, sPath, sizeof sPath, "configs/navpoints/%s.txt", currentMap);
-	
+
 	if (!FileExists(sPath))
 	{
 		LogMessage("No navigation data found for map %s", currentMap);
 		return;
 	}
-	
+
 	KeyValues kv = new KeyValues("NavPoints");
 	kv.ImportFromFile(sPath);
-	
+
 	//Establish Sniper Positions
 	if (kv.JumpToKey("sniper"))
 	{
@@ -2139,7 +2156,7 @@ public void ReloadNodes()
 		}
 		kv.GoBack();
 	}
-	
+
 	//Initialize Fallback points only for CP maps
 	if (IsControlPoints())
 	{
@@ -2163,12 +2180,12 @@ public void ReloadNodes()
 			}
 		}
 		kv.GoBack();
-		
+
 		Format(sFallback, sizeof sFallback, "\n -%i Fallback Positions", FallBackCount);
 	}
 	kv.Rewind();
 	delete kv;
-	
+
 	LogMessage("Found %i Sniper nav points and %i Rocket Jump positions for map %s.", SnipePosCount, RJPosCount, currentMap);
 }
 
@@ -2178,7 +2195,7 @@ public void ClearNavPositions()
 	SnipePosCount = 0;
 	RJPosCount = 0;
 	FallBackCount = 0;
-	
+
 	//Set RJ positions as not existing
 	for (int i = 0; i < MAXRJPOS; i++)
 	{
@@ -2197,19 +2214,19 @@ public Action TF2_CalcIsAttackCritical(int bot, int weapon, char[] weaponname, b
 		int health = GetClientHealth(bot);
 		int jumpsuccess = 1;
 		int wIndex = GetEntProp(weapon, Prop_Send, "m_iItemDefinitionIndex");
-		
+
 		//Call OnBotAttack
 		Action aResult = Plugin_Continue;
 		Call_StartForward(g_BotAttack);
-	
+
 		Call_PushCell(bot);
 		Call_PushCell(BotIndex[bot]);
 		Call_PushCell(bIsHookedBot[bot]);
 		Call_PushCell(wIndex);
 		Call_PushCell(result);
-	
+
 		Call_Finish(aResult);
-		
+
 		if (aResult == Plugin_Continue)
 		{
 			switch (class)
@@ -2260,7 +2277,7 @@ public Action TF2_CalcIsAttackCritical(int bot, int weapon, char[] weaponname, b
 					int jumpchance = GetRandomInt(1, 10);
 					if (PreferJump[bot])
 						jumpsuccess = 7;
-						
+
 					if (jumpchance <= jumpsuccess && JumpDelayCount[bot] <= 0)
 					{
 						bScoutSingleJump[bot] = true;
@@ -2362,11 +2379,21 @@ public Action TF2_CalcIsAttackCritical(int bot, int weapon, char[] weaponname, b
 	return Plugin_Continue;
 }
 
-stock void DoAntiAim(int client, int aimtype)
+stock void DoAntiAim(int client, int aimtype, bool lagComp = true)
 {
 	float angle[3];
 	GetClientEyeAngles(client, angle);
-	
+
+	if (lagComp)
+	{
+		SetEntProp(client, Prop_Data, "m_bLagCompensation", true);
+		SetEntProp(client, Prop_Data, "m_bPredictWeapons", true);
+	}
+	else
+	{
+		SetEntProp(client, Prop_Data, "m_bLagCompensation", false);
+		SetEntProp(client, Prop_Data, "m_bPredictWeapons", false);
+	}
 	switch (aimtype)
 	{
 		case 1:
@@ -2380,7 +2407,7 @@ stock void DoAntiAim(int client, int aimtype)
 			angle[0] = (GetRandomInt(1, 2) == 1 ? 89.0 : -89.0);
 		}
 	}
-	
+
 	TeleportEntity(client, NULL_VECTOR, angle, NULL_VECTOR);
 }
 
@@ -2409,17 +2436,17 @@ stock bool PathObstructed(int client)
 		{
 			CloseHandle(EyeTrace);
 			CloseHandle(HullTrace);
-			
+
 			iObstructions[client]++;
-			
+
 			//We can't jump over an object at eye level, so do not even try to jump
 			return false;
 		}
 		CloseHandle(EyeTrace);
 		CloseHandle(HullTrace);
-		
+
 		iObstructions[client] = 0;
-		
+
 		if (TF2_GetPlayerClass(client) == TFClass_Scout)
 		{
 			bScoutSingleJump[client] = true;
@@ -2428,9 +2455,9 @@ stock bool PathObstructed(int client)
 		return true;
 	}
 	CloseHandle(HullTrace);
-	
+
 	iObstructions[client] = 0;
-	
+
 	//Nothing to jump over
 	return false;
 }
@@ -2439,10 +2466,10 @@ public bool CheckCollision(int entity, int contentsMask, any iOwner)
 {
 	if (IsValidClient(entity))
 		return false;
-	
+
 	char class[64];
 	GetEntityClassname(entity, class, sizeof(class));
-	
+
 	if (StrEqual(class, "prop_dynamic"))
 	{
 		char modelname[64];
@@ -2450,7 +2477,7 @@ public bool CheckCollision(int entity, int contentsMask, any iOwner)
 		//bInCaptureArea[iOwner] = true;
 		//return false;
 	}
-	
+
 	if (StrEqual(class, "entity_medigun_shield"))
 	{
 		if (GetEntProp(entity, Prop_Send, "m_iTeamNum") == GetClientTeam(iOwner))
@@ -2478,7 +2505,7 @@ stock void DoStutterStep(int client, float velocity[3], TFClassType class, float
 			StrafeSpeed[client] = GetPlayerMaxSpeed(client) * -1;
 		else
 			StrafeSpeed[client] = GetPlayerMaxSpeed(client);
-			
+
 		if (class == TFClass_Sniper && TF2_IsPlayerInCondition(client, TFCond_Slowed))
 		{
 			if (TargetIsValid(client, BotAggroTarget[client]))
@@ -2508,7 +2535,7 @@ stock void SetFallBackPoints()
 			for (int i = 0; i < FallBackCount; i++)
 			{
 				if (iTeam != FallBackTeam[i]) continue;
-				
+
 				flDistance = GetVectorDistance(flPos, FallBackPos[i]);
 				if (flDistance <= flClosest)
 				{
@@ -2530,14 +2557,14 @@ public bool MoveTowardsNode(int bot, bool fallback)
 	GetClientEyeAngles(bot, vAngles);
 	GetClientEyePosition(bot, flEyePos);
 	flMovePos = FallBackPos[iTeam];
-	
+
 	if (iObstructions[bot] >= 5)
 	{
 		//Allow bot to move freely when stuck
 		flNavDelay[bot] = GetEngineTime() + GetRandomFloat(1.25, 3.0);
 		return false;
 	}
-	
+
 	//Find fallback node and move towards it
 	if (fallback)
 	{
@@ -2546,17 +2573,17 @@ public bool MoveTowardsNode(int bot, bool fallback)
 			// Don't move towards position if within radius
 			if (GetVectorDistance(flMovePos, flEyePos) <= NodeRadius[FallBackIndex[iTeam]])
 				return false;
-				
-			
+
+
 			//Set position at eye level to give a more natural movement look
 			flMovePos[2] = flEyePos[2];
-			
+
 			//Get vector from bot pos to node
 			MakeVectorFromPoints(flMovePos, flEyePos, flMoveVec);
 			GetVectorAngles(flMoveVec, vMoveAngles);
 			vMoveAngles[0] *= -1.0;
 			vMoveAngles[1] += 180.0;
-			
+
 			ClampAngle(vMoveAngles);
 			TeleportEntity(bot, NULL_VECTOR, vMoveAngles, NULL_VECTOR);
 			bInCaptureArea[bot] = false;
@@ -2566,16 +2593,16 @@ public bool MoveTowardsNode(int bot, bool fallback)
 	else // move towards nearest active control point
 	{
 		FindNearestCapturePoint(bot, iTeam, flMovePos); //Sets flMovePos as the nearest capture point position
-		
+
 		// Don't move towards position if within radius
 		if (GetVectorDistance(flMovePos, flEyePos) <= 250.0)
 			bInCaptureArea[bot] = true;
 		if (GetVectorDistance(flMovePos, flEyePos) <= 150.0)
 			return false;
-			
+
 
 		flMovePos[2] = flEyePos[2];
-		
+
 		//Get Vector from bot pos to node
 		MakeVectorFromPoints(flMovePos, flEyePos, flMoveVec);
 		GetVectorAngles(flMoveVec, vMoveAngles);
@@ -2614,9 +2641,9 @@ stock bool ShouldFallBack(int bot)
 	int iTeam = GetClientTeam(bot);
 	int OtherTeam = GetOpposingTeam(iTeam);
 	if (OtherTeam == 0) return false;
-	
+
 	int FriendAlive, EnemyAlive;
-	
+
 	//Get number of alive players per team
 	for (int i = 1; i <= MaxClients; i++)
 	{
@@ -2633,48 +2660,104 @@ stock bool ShouldFallBack(int bot)
 	return false;
 }
 
+public void DoNoiseMaker(int bot)
+{
+	if (NoiseMakerDelay[bot] <= GetEngineTime())
+	{
+		char Noise[256], sParticle[256];
+		NoiseMakerDelay[bot] = GetEngineTime() + NoiseMakerDelayAdd[bot];
+		switch (NoiseMaker[bot])
+		{
+			case 284: //banshee
+			{
+				Format(Noise, sizeof Noise, "items/halloween/banshee0%i.wav", GetRandomInt(1, 3));
+				Format(sParticle, sizeof sParticle, "halloween_notes");
+				PrecacheSound(Noise);
+			}
+			case 542: //Vuvuzela
+			{
+				int num = GetRandomInt(1, 17);
+				Format(Noise, sizeof Noise, "items/football_manager/vuvezela_%i%i.wav", num < 10 ? 0 : 1, num < 10 ? num : num - 10);
+				PrecacheSound(Noise);
+				Format(sParticle, sizeof sParticle, "bday_confetti");
+			}
+		}
+		EmitSoundToAll(Noise, bot, SNDCHAN_AUTO, 100);
+		int newParticle = CreateParticle(bot, sParticle, 74.0, true);
+		CreateTimer(5.0, RemoveParticle, EntIndexToEntRef(newParticle), TIMER_FLAG_NO_MAPCHANGE);
+	}
+}
+
+public Action RemoveParticle(Handle Timer, any ref)
+{
+	int iPart = EntRefToEntIndex(ref);
+	if (IsValidEntity(iPart) && iPart > 0)
+	{
+		char className[64];
+		GetEntityClassname(iPart, className, sizeof className);
+		if (StrEqual(className, "info_particle_system"))
+		{
+			AcceptEntityInput(iPart, "Kill");
+		}
+	}
+	return Plugin_Stop;
+}
+
 public Action OnPlayerRunCmd(int bot, int &buttons, int &impulse, float vel[3], float angles[3], int &weapon, int &subtype, int &cmdnum, int &tickcount, int &seed, int mouse[2])
 {
 	if(IsValidClient(bot))
 	{
+		if (!IsFakeClient(bot) && GetConVarBool(g_playerBot))
+		{
+			if (buttons & IN_RELOAD)
+			{
+				SetEntProp(bot, Prop_Data, "m_bLagCompensation", false);
+				SetEntProp(bot, Prop_Data, "m_bPredictWeapons", false);
+				float vAngle2[3];
+				GetClientEyeAngles(bot, vAngle2);
+				SetPlayerViewAngles(bot, vAngle2, true);
+			}
+			else
+			{
+				SetEntProp(bot, Prop_Data, "m_bLagCompensation", true);
+				SetEntProp(bot, Prop_Data, "m_bPredictWeapons", true);
+			}
+		}
 		float oAngle[3];
 		oAngle = angles;
-		
-		if (cloak)
-		{
-			SetEntProp(bot, Prop_Send, "m_iAmmo", 50, _, 1);
-		}
 		if(IsFakeClient(bot))
 		{
 			if(IsPlayerAlive(bot) && (BotIndex[bot] > 0 || bIsHookedBot[bot]))
 			{
 				TFClassType class = TF2_GetPlayerClass(bot);
 				float speed = GetVectorLength(vel, false);
-					
+				if (NoiseMaker[bot] > 0)
+					DoNoiseMaker(bot);
+
 				if (speed <= 60.0)
 					DoStutterStep(bot, vel, class);
-					
+
 				if (GetHealth(bot) <= 50 && CallMedicDelay[bot] <= GetEngineTime())
 				{
 					FakeClientCommand(bot, "voicemenu 0 0");
 					CallMedicDelay[bot] = GetEngineTime() + (GetRandomFloat(5.0, 35.0));
 				}
-					
+
 				if (!(class == TFClass_Sniper && TF2_IsPlayerInCondition(bot, TFCond_Slowed)))
 				{
 					SetEntProp(bot, Prop_Send, "m_iFOV", 90);
 					SetEntProp(bot, Prop_Send, "m_iDefaultFOV", 90);
 				}
 				int team = GetClientTeam(bot);
-				
+
 				bIsAttacking[bot] = (buttons & IN_ATTACK) != 0;
-				
+
 				if (flBotAmmoDuration[bot] <= GetEngineTime())
 					RefreshAmmo(bot, GetPlayerWeaponSlot(bot, TFWeaponSlot_Primary), GetPlayerWeaponSlot(bot, TFWeaponSlot_Secondary));
-				
+
 				char currentMap[PLATFORM_MAX_PATH];
 				GetCurrentMap(currentMap, sizeof(currentMap));
-				
+
 				if (JumpTimer[bot] <= GetEngineTime())
 				{
 					buttons |= IN_JUMP;
@@ -2683,32 +2766,32 @@ public Action OnPlayerRunCmd(int bot, int &buttons, int &impulse, float vel[3], 
 						if (!bScoutSingleJump[bot])
 							DoubleJumpTimer[bot] = GetEngineTime() + GetRandomFloat(0.1, 0.25);
 					}
-					
+
 					Call_StartForward(g_BotJump);
-	
+
 					Call_PushCell(bot);
 					Call_PushCell(BotIndex[bot]);
 					Call_PushCell(bIsHookedBot[bot]);
-	
+
 					Call_Finish();
-					
+
 					JumpTimer[bot] = FAR_FUTURE;
 				}
 				if (DoubleJumpTimer[bot] <= GetEngineTime())
 				{
 					buttons |= IN_JUMP;
 					Call_StartForward(g_BotJump);
-	
+
 					Call_PushCell(bot);
 					Call_PushCell(BotIndex[bot]);
 					Call_PushCell(bIsHookedBot[bot]);
-	
+
 					Call_Finish();
-					
+
 					JumpTimer[bot] = FAR_FUTURE;
 					DoubleJumpTimer[bot] = FAR_FUTURE;
 				}
-				
+
 				//Find target
 				if (AggroTime[bot] <= GetEngineTime())
 				{
@@ -2719,34 +2802,34 @@ public Action OnPlayerRunCmd(int bot, int &buttons, int &impulse, float vel[3], 
 					if (IsValidClient(BotAggroTarget[bot]) && BotAggroTarget[bot] != bot)
 						AggroTime[bot] = GetEngineTime() + AggroDelay[bot];
 				}
-				
+
 				if (IsValidClient(BotAggroTarget[bot]) && TargetIsValid(bot, BotAggroTarget[bot]))
 				{
 					float targetPos[3], botPos[3];
 					GetClientAbsOrigin(BotAggroTarget[bot], targetPos);
 					GetClientAbsOrigin(bot, botPos);
-					
+
 					bFleeing[bot] = ShouldBotFlee(bot);
-					
+
 					flNavDelay[bot] = GetEngineTime() + 3.0;
-					
+
 					float flDistance = GetVectorDistance(botPos, targetPos);
-					
+
 					int pWeapon = GetEntPropEnt(bot, Prop_Send, "m_hActiveWeapon");
 					int pIndex;
 					if (IsValidEntity(pWeapon) && pWeapon > MaxClients)
 						pIndex = GetEntProp(pWeapon, Prop_Send, "m_iItemDefinitionIndex");
-						
+
 					int sWeapon = GetPlayerWeaponSlot(bot, TFWeaponSlot_Secondary);
 					int sIndex;
 					if (IsValidEntity(sWeapon) && sWeapon > MaxClients)
 						sIndex = GetEntProp(sWeapon, Prop_Send, "m_iItemDefinitionIndex");
-					
+
 					int mWeapon = GetPlayerWeaponSlot(bot, TFWeaponSlot_Melee);
 					int mIndex;
 					if (IsValidEntity(mWeapon) && mWeapon > MaxClients)
 						mIndex = GetEntProp(mWeapon, Prop_Send, "m_iItemDefinitionIndex");
-					
+
 					if (!bFleeing[bot] && class != TFClass_Sniper && class != TFClass_Medic && SpyIsAttacking(bot, class))
 					{
 						if (flDistance > AttackRange[bot] && AcceptableAngle(bot, BotAggroTarget[bot]) && !bInCaptureArea[bot])
@@ -2754,7 +2837,7 @@ public Action OnPlayerRunCmd(int bot, int &buttons, int &impulse, float vel[3], 
 							//PrintCenterTextAll("Bot Distance: %.1f\nAttack Range: %.1f", flDistance, AttackRange[bot]);
 							moveForward(vel, GetPlayerMaxSpeed(bot, false));
 						}
-						
+
 						switch (class)
 						{
 							case TFClass_DemoMan:
@@ -2768,7 +2851,7 @@ public Action OnPlayerRunCmd(int bot, int &buttons, int &impulse, float vel[3], 
 										buttons |= IN_ATTACK;
 									else if (TF2_IsPlayerInCondition(bot, TFCond_Charging))
 										buttons &= ~IN_ATTACK;
-										
+
 									if (650.0 > flDistance >= AttackRange[bot] && CheckTrace(bot, BotAggroTarget[bot]))
 									{
 										if (flCharge >= 100.0)
@@ -2782,7 +2865,7 @@ public Action OnPlayerRunCmd(int bot, int &buttons, int &impulse, float vel[3], 
 							{
 								if (flDistance <= AttackRange[bot] + 200.0)
 									DoStutterStep(bot, vel, class, GetRandomFloat(0.4, 0.9));
-									
+
 								if (GetEntProp(GetPlayerWeaponSlot(bot, TFWeaponSlot_Primary), Prop_Send, "m_iClip1") == 0 && flBotKeepPrimaryDelay[bot] <= GetEngineTime())
 								{
 									TryKeepSlot(bot, GetPlayerWeaponSlot(bot, TFWeaponSlot_Primary), GetPlayerWeaponSlot(bot, TFWeaponSlot_Secondary), TFWeaponSlot_Primary, 10.0, buttons);
@@ -2801,10 +2884,10 @@ public Action OnPlayerRunCmd(int bot, int &buttons, int &impulse, float vel[3], 
 								}
 								if (flDistance <= 450.0)
 									buttons |= IN_ATTACK;
-								
+
 								if (flDistance >= 125.0)
 									buttons &= ~IN_ATTACK2;
-								
+
 								switch (sIndex)
 								{
 									case 39, 351, 740, 1081: //flareguns
@@ -2901,8 +2984,8 @@ public Action OnPlayerRunCmd(int bot, int &buttons, int &impulse, float vel[3], 
 					case TFClass_Sniper:
 					{
 						if (iAntiAim[bot] > 0)
-							DoAntiAim(bot, iAntiAim[bot]);
-						
+							DoAntiAim(bot, iAntiAim[bot], true);
+
 						int iTarget = GetTargetAim(bot);
 						if (CheckTrace(bot, iTarget))
 						{
@@ -2910,11 +2993,11 @@ public Action OnPlayerRunCmd(int bot, int &buttons, int &impulse, float vel[3], 
 								buttons |= IN_ATTACK2;
 							else if (HeadShotDelay[bot] <= GetEngineTime() && TF2_IsPlayerInCondition(bot, TFCond_Slowed))
 								buttons |= IN_ATTACK;
-						}
-						
-						if ((buttons & IN_ATTACK) && AimDelay[bot] <= GetEngineTime())
-						{
-							SetTargetViewAngles(bot, true);
+
+							if ((buttons & IN_ATTACK) && AimDelay[bot] <= GetEngineTime())
+							{
+								SetTargetViewAngles(bot, true);
+							}
 						}
 					}
 					case TFClass_Scout:
@@ -2923,7 +3006,7 @@ public Action OnPlayerRunCmd(int bot, int &buttons, int &impulse, float vel[3], 
 						{
 							if (!IsWeaponSlotActive(bot, TFWeaponSlot_Melee))
 								TF2_SwitchToSlot(bot, TFWeaponSlot_Melee);
-								
+
 						}
 					}
 					case TFClass_Soldier:
@@ -2939,7 +3022,7 @@ public Action OnPlayerRunCmd(int bot, int &buttons, int &impulse, float vel[3], 
 							}
 							else
 								moveForward(vel, 500.0);
-							
+
 							if (RJForwardTime[bot] <= GetEngineTime())
 							{
 								RJForwardDelay[bot] = FAR_FUTURE;
@@ -2947,7 +3030,7 @@ public Action OnPlayerRunCmd(int bot, int &buttons, int &impulse, float vel[3], 
 								NavJump[bot] = false;
 							}
 						}
-						
+
 						if (ShouldRocketJump(bot))
 						{
 							float newAim[3];
@@ -2968,7 +3051,7 @@ public Action OnPlayerRunCmd(int bot, int &buttons, int &impulse, float vel[3], 
 									RJDelay[bot] = FAR_FUTURE;
 									RJForwardDelay[bot] = GetEngineTime() + 0.2;
 									RJForwardTime[bot] = GetEngineTime() + 1.2;
-									
+
 									CallRocketJump(bot, SoldierPrimary);
 								}
 							}
@@ -3004,7 +3087,7 @@ public Action OnPlayerRunCmd(int bot, int &buttons, int &impulse, float vel[3], 
 												RJForwardDelay[bot] = GetEngineTime() + 0.08;
 												RJForwardTime[bot] = GetEngineTime() + 1.2;
 												RJCooldown[bot] = GetEngineTime() + 5.0;
-												
+
 												CallRocketJump(bot, SoldierPrimary);
 											}
 										}
@@ -3032,7 +3115,7 @@ public Action OnPlayerRunCmd(int bot, int &buttons, int &impulse, float vel[3], 
 												RJForwardDelay[bot] = GetEngineTime() + 0.08;
 												RJForwardTime[bot] = GetEngineTime() + 1.2;
 												RJCooldown[bot] = GetEngineTime() + 5.0;
-												
+
 												CallRocketJump(bot, SoldierPrimary);
 											}
 										}
@@ -3083,13 +3166,13 @@ stock void TryKeepSlot(int bot, int primary, int secondary, int slot, float dura
 						iPreservedAmmoP[bot] = GetEntProp(bot, Prop_Send, "m_iAmmo", _, iAmmoType);
 						//PrintToChatAll("Preserved Primary Ammo at: %i", iPreservedAmmoP[bot]);
 					}
-					
+
 					//Empty clip and ammo to prevent bot from switching back to this weapon
 					SetEntProp(bot, Prop_Send, "m_iAmmo", 0, _, iAmmoType);
 				}
 			}
 		}
-		
+
 		if (slot == 2 || slot == 0)
 		{
 			//Repeat for secondary
@@ -3109,19 +3192,19 @@ stock void TryKeepSlot(int bot, int primary, int secondary, int slot, float dura
 
 					if (GetEntProp(bot, Prop_Send, "m_iAmmo", _, iAmmoType) > 0)
 						iPreservedAmmoS[bot] = GetEntProp(bot, Prop_Send, "m_iAmmo", _, iAmmoType);
-						
+
 					SetEntProp(bot, Prop_Send, "m_iAmmo", 0, _, iAmmoType);
 				}
 			}
 		}
-		
+
 		if (slot == 2)
 		{
 			if (!IsWeaponSlotActive(bot, TFWeaponSlot_Melee)) //If we do not already have melee out, switch to it
 				TF2_SwitchToSlot(bot, TFWeaponSlot_Melee);
 		}
 	}
-	
+
 	if (slot == 2)
 	{
 		if (GetDistance(bot, BotAggroTarget[bot]) < 255.0)
@@ -3164,7 +3247,7 @@ stock void RefreshAmmo(int bot, int primary, int secondary)
 			iPreservedAmmoP[bot] = 0;
 		}
 	}
-	
+
 	//Repeat for secondary
 	if (IsValidEntity(secondary) && secondary > MaxClients && HasEntProp(secondary, Prop_Send, "m_iClip1"))
 	{
@@ -3182,7 +3265,7 @@ stock void RefreshAmmo(int bot, int primary, int secondary)
 				SetEntProp(bot, Prop_Send, "m_iAmmo", iPreservedAmmoS[bot], _, iAmmoType); //set secondary ammo
 				//PrintToChatAll("Set Secondary Ammo: %i", iPreservedAmmoS[bot]);
 			}
-			
+
 			iPreservedClipS[bot] = 0;
 			iPreservedAmmoS[bot] = 0;
 		}
@@ -3197,19 +3280,19 @@ stock float GetDistance(int client, int target)
 	float clPos[3], tgPos[3];
 	GetClientEyePosition(client, clPos);
 	GetClientAbsOrigin(target, tgPos);
-	
+
 	return (GetVectorDistance(clPos, tgPos));
 }
 
 stock void CallRocketJump(int bot, int weapon)
 {
 	Call_StartForward(g_BotRocketJump);
-	
+
 	Call_PushCell(bot);
 	Call_PushCell(BotIndex[bot]);
 	Call_PushCell(bIsHookedBot[bot]);
 	Call_PushCell(weapon);
-	
+
 	Call_Finish();
 }
 
@@ -3220,7 +3303,6 @@ stock bool IsPushClass(TFClassType class)
 		case TFClass_Sniper, TFClass_Medic, TFClass_Spy, TFClass_Engineer: return false;
 		default: return true;
 	}
-	return false;
 }
 
 stock bool Soldier_ValidRJPos(int bot, int nav, int team)
@@ -3254,10 +3336,10 @@ stock void FixAAMovement(int client, const float vOldAngles[3], float vViewAngle
 {
 	float f1 = (vOldAngles[1] < 0.0) ? (360.0 + vOldAngles[1]) : (vOldAngles[1]);
 	float f2 = (vViewAngles[1] < 0.0) ? (360.0 + vViewAngles[1]) : (vViewAngles[1]);
-	
+
 	float deltaView = (f2 < f1) ? (FloatAbs(f2 - f1)) : (360.0 - FloatAbs(f1 - f2));
 	deltaView = 360.0 - deltaView;
-	
+
 	flForwardMove = Cosine(DegToRad(deltaView)) * fOldForward + Cosine(DegToRad(deltaView + 90.0)) * fOldSidemove;
 	flSideMove = Sine(DegToRad(deltaView)) * fOldForward + Sine(DegToRad(deltaView + 90.0)) * fOldSidemove;
 }
@@ -3270,10 +3352,10 @@ public void TF2_OnConditionAdded(int client, TFCond condition)
 		{
 			float delay = flSniperAimTime[client];
 			delay += (GetRandomFloat(-0.25, 0.85)); //add some variance for more natural aim
-			ClampFloat(delay, 0.225); //Clamp delay
+			ClampFloat(delay, 0.15); //Clamp delay
 			if (iAntiAim[client] > 0)
-				delay = 0.205;
-			HeadShotDelay[client] = GetEngineTime()+delay;
+				delay = 0.20;
+			HeadShotDelay[client] = GetEngineTime() + delay;
 		}
 	}
 }
@@ -3350,7 +3432,7 @@ stock int MedicGetPatient(int bot)
 		}
 	}
     return -1;
-} 
+}
 
 stock bool MedicShouldUber(int bot, int patient = 0)
 {
@@ -3363,7 +3445,7 @@ stock bool MedicShouldUber(int bot, int patient = 0)
 		{
 			flChargeMed = GetEntPropFloat(medigun, Prop_Send, "m_flChargeLevel");
 			medIndex = GetEntProp(medigun, Prop_Send, "m_iItemDefinitionIndex");
-		
+
 			if (flChargeMed >= 100.0)
 			{
 				if (medIndex == 35) // Kritzkrieg
@@ -3397,11 +3479,11 @@ stock bool ShouldBotFlee(int bot)
 		//Get bot's health variables
 		float maxhp = float(GetEntProp(bot, Prop_Data, "m_iMaxHealth"));
 		float curhp = float(GetHealth(bot));
-		
+
 		//Setup values to check against
 		float hpratio = curhp / maxhp;
 		float threshold = flHealthThreshold[bot];
-		
+
 		//PrintCenterTextAll("BotHP: %.1f BotMaxHP: %.1f HPRatio: %.1f Threshold: %.1f Fleeing: %s", curhp, maxhp, hpratio, threshold, bFleeing[bot] ? "True" : "False");
 		if (hpratio <= threshold)
 			return true;
@@ -3415,32 +3497,31 @@ stock int GetBotHealthThreshold(int bot)
 	return (RoundToFloor(flHealthThreshold[bot] * maxhp))
 }
 
-stock void SetTargetViewAngles(int bot, bool head = false, bool proj = false, ground = true)
+stock void SetTargetViewAngles(int bot, bool head = false, bool proj = false, ground = true, bool player = false)
 {
 	//TFClassType class = TF2_GetPlayerClass(bot);
 	float aimpos[3], aimangle[3], botpos[3], aimvec[3], angle[3];
-	
+
 	int target = BotAggroTarget[bot];
-	
+	//PrintToChatAll("SetViewAngle | Bot = %i | Target = %i", bot, target);
+	if (!IsValidClient(target)) return;
+
 	//Make sure target is visible and within bot's aim FOV
 	if (!CheckTrace(bot, target)) return;
 	if (!TargetInFOV(bot, target, AimFOV[bot])) return;
-	
-	//PrintToChatAll("SetViewAngle: Target = %i", target);
-	if (!IsValidClient(target)) return;
-	
+
 	//Does the bot prioritize aiming for the head
 	if (head)
 	{
-		GetClientEyePosition(target, aimpos);
-		//GetHeadHitbox(bot, target, aimpos, angle);
+		//GetClientEyePosition(target, aimpos);
+		GetBestHitBox(bot, target, aimpos);
 	}
 	else
 		GetClientAbsOrigin(target, aimpos);
-		
+
 	GetClientEyePosition(bot, botpos);
 	GetClientEyeAngles(bot, angle);
-	
+
 	//Is the bot using a projectile weapon, adjust position and lead target
 	if (proj)
 	{
@@ -3455,36 +3536,89 @@ stock void SetTargetViewAngles(int bot, bool head = false, bool proj = false, gr
 		aimpos[2] += GetRandomFloat(10.0, 60.0);
 		aimpos[1] += GetRandomFloat(-20.0, 20.0);
 	}
-	
+
 	//Get vector between target and bot then get the angle
 	MakeVectorFromPoints(aimpos, botpos, aimvec);
 	GetVectorAngles(aimvec, aimangle);
 	aimangle[0] *= -1.0;
 	aimangle[1] += 180.0;
-	
+
 	//Add inaccuracy based on bot's settings
 	aimangle[0] += GetRandomFloat((Inaccuracy[bot] * -1), Inaccuracy[bot]);
 	aimangle[1] += GetRandomFloat((Inaccuracy[bot] * -1), Inaccuracy[bot]);
-	
+
 	//clamp angles to prevent janking
 	ClampAngle(aimangle);
+	//SnapEyeAngles(bot, aimpos);
 	TeleportEntity(bot, NULL_VECTOR, aimangle, NULL_VECTOR);
 }
+
+stock void SetPlayerViewAngles(int client, float angle[3], bool head = false, bool proj = false, ground = true)
+{
+	//TFClassType class = TF2_GetPlayerClass(bot);
+	float aimpos[3], aimangle[3], botpos[3], aimvec[3];
+
+	int target = SelectBestTarget(client, angle, 180.0);
+
+	//Make sure target is visible and within bot's aim FOV
+	if (!CheckTrace(client, target)) return;
+
+	//PrintToChatAll("SetViewAngle: Target = %i", target);
+	if (!IsValidClient(target)) return;
+
+	//Does the bot prioritize aiming for the head
+	if (head)
+	{
+		//GetClientEyePosition(target, aimpos);
+		GetBestHitBox(client, target, aimpos);
+	}
+	else
+		GetClientAbsOrigin(target, aimpos);
+
+	GetClientEyePosition(client, botpos);
+
+	//Is the bot using a projectile weapon, adjust position and lead target
+	if (proj)
+	{
+		if (!ground)
+			aimpos[2] += 35.0;
+		else
+			aimpos[2] += 3.5;
+		TryPredictPosition(client, target, aimpos, botpos, GetProjSpeed(client))
+	}
+	else if (!head) //otherwise add a bit of variance to cover most of the player's hitbox area
+	{
+		aimpos[2] += GetRandomFloat(10.0, 60.0);
+		aimpos[1] += GetRandomFloat(-20.0, 20.0);
+	}
+
+	//Get vector between target and bot then get the angle
+	MakeVectorFromPoints(aimpos, botpos, aimvec);
+	GetVectorAngles(aimvec, aimangle);
+	aimangle[0] *= -1.0;
+	aimangle[1] += 180.0;
+
+	//clamp angles to prevent janking
+	ClampAngle(aimangle);
+	//SnapEyeAngles(bot, aimpos);
+	TeleportEntity(client, NULL_VECTOR, aimangle, NULL_VECTOR);
+}
+
 
 stock bool TargetInFOV(int bot, int target, float fov)
 {
 	float vecBotPos[3], vecTargPosition[3], angBotViewAngles[3], fovcheck;
-	
+
 	GetClientEyeAngles(bot, angBotViewAngles);
 	GetClientAbsOrigin(bot, vecBotPos);
 	GetClientEyePosition(target, vecTargPosition);
 	vecTargPosition[2] -= 37.0;
-	
+
 	fovcheck = GetFov(angBotViewAngles, CalcAngle(vecBotPos, vecTargPosition));
-	
+
 	if (fovcheck <= fov)
 		return true;
-	
+
 	return false;
 }
 
@@ -3546,7 +3680,7 @@ stock float[] TryPredictPosition(int bot, int target, float TargetLocation[3], f
 			{
 				//PrintToChatAll("Air shot");
 				TargetLocation[2] += TargetVelocity[2] * flTravelTime + (gravity + Pow(flTravelTime, 2.0)) - 10.0;
-				
+
 				//Check if target will hit a surface
 				float target_curpos[3];
 				GetClientAbsOrigin(target, target_curpos);
@@ -3565,7 +3699,7 @@ stock float TryGetGroundPosition(int target, float pos[3], float height, float t
 {
 	float DownAngle[3] = {89.0, 0.0, 0.0};
 	float endpos[3];
-	
+
 	Handle position_trace = TR_TraceRayFilterEx(pos, DownAngle, MASK_PLAYERSOLID, RayType_Infinite, FilterSelf, target);
 	if (TR_DidHit(position_trace))
 	{
@@ -3677,7 +3811,7 @@ stock int SelectBestTarget(int bot, float oAngles[3], float fov) //Gets the clos
 	float vecBotPos[3];
 	GetClientEyePosition(bot, vecBotPos);
 	int target = INVALID_ENT_REFERENCE;
-	
+
 	BotAggroTarget[bot] = INVALID_ENT_REFERENCE;
 	//PrintToChatAll("fov: %.1f", fov);
 
@@ -3807,9 +3941,11 @@ stock bool IsValidTarget(int client, int target)
 	return true;
 }
 
-stock bool CheckTrace(attacker, victim)
+stock bool CheckTrace(int attacker, int victim)
 {
 	//PrintToChat(attacker, "tracing for target.");
+	if (!IsValidClient(victim))
+		PrintCenterTextAll("Target not a player - Ent: %i", victim);
 	bool result = false;
 	float startingpos[3], targetpos[3];
 	GetClientEyePosition(attacker, startingpos);
@@ -3833,7 +3969,7 @@ public bool FilterSelf(int entity, int contentsMask, any iExclude)
 {
 	char class[64];
 	GetEntityClassname(entity, class, sizeof(class));
-	
+
 	if (StrEqual(class, "entity_medigun_shield"))
 	{
 		if (GetEntProp(entity, Prop_Send, "m_iTeamNum") == GetClientTeam(iExclude))
@@ -3849,7 +3985,7 @@ public bool FilterSelf(int entity, int contentsMask, any iExclude)
 	{
 		return false;
 	}
-	
+
 	return !(entity == iExclude);
 }
 
@@ -3879,21 +4015,21 @@ stock bool AcceptableAngle(int bot, int target)
 	GetClientEyeAngles(bot, botrot);
 	GetClientAbsOrigin(bot, botpos);
 	GetClientAbsOrigin(target, targpos);
-	
+
 	botrot[0] = 0.0; //zero pitch;
-	
+
 	GetAngleVectors(botrot, botvec, NULL_VECTOR, NULL_VECTOR);
 	GetAngleVectors(CalcAngle(botpos, targpos), targvec, NULL_VECTOR, NULL_VECTOR); //get forward vector of the angle between target and bot
-	
+
 	float pitch[3];
 	GetVectorAngles(targvec, pitch); //Get angles of new vector
 	pitch[1] = 0.0; //zero yaw, we only want pitch
 	ClampAngle(pitch);
 	//GetAngleVectors(pitch, targvec, NULL_VECTOR, NULL_VECTOR); //Get forward vector of the pitch between target and bot
-	
+
 	//float angle = RadToDeg(ArcCosine(GetVectorDotProduct(botvec, targvec))); //Find angle in degrees
 	//PrintCenterText(target, "BotYaw: %.1f AnglePitch: %.1f Angle: %.1f", botrot[1], (pitch[0] * -1.0), angle);
-	
+
 	if ((pitch[0] * -1) >= 45.0) //Max walkable slope angle is 45 degrees, so if the angle to a target is steeper than this, it is not an acceptable angle
 		return false;
 	return true;
@@ -3944,12 +4080,12 @@ stock bool CreateHat(int client, int itemindex, int quality = 6, int level = 0, 
 		default: Format(entname, sizeof entname, "tf_wearable");
 	}
 	int hat = CreateEntityByName(entname);
-	
+
 	if (!IsValidEntity(hat))
 	{
 		return false;
 	}
-	
+
 	char entclass[64];
 	GetEntityNetClass(hat, entclass, sizeof(entclass));
 	SetEntProp(hat, Prop_Send, "m_iItemDefinitionIndex", itemindex);
@@ -3966,7 +4102,7 @@ stock bool CreateHat(int client, int itemindex, int quality = 6, int level = 0, 
 	}
 	if (effect != 0)
 		TF2Attrib_SetByDefIndex(hat, 134, float(effect));
-	
+
 	if (paint != 0) //red team paint
 	{
 		TF2Attrib_SetByDefIndex(hat, 142, float(paint));
@@ -3975,13 +4111,13 @@ stock bool CreateHat(int client, int itemindex, int quality = 6, int level = 0, 
 		TF2Attrib_SetByDefIndex(hat, 261, float(paint2));
 	else
 		TF2Attrib_SetByDefIndex(hat, 261, float(paint));
-	
+
 	DispatchSpawn(hat);
 	SDKCall(g_hWearableEquip, client, hat);
 	return true;
 }
 
-stock SpawnWeapon2(client, String:name[], index, level, quality, String:attribute[], visible = 1, bool:preserve = false, String:model[] = "")
+stock int CreateWeapon(int client, char[] name, int index, int level, int quality, char[] attribute, bool visible = true, bool preserve = true)
 {
 	if(StrEqual(name,"saxxy", false)) // if "saxxy" is specified as the name, replace with appropiate name
 	{
@@ -4012,25 +4148,25 @@ stock SpawnWeapon2(client, String:name[], index, level, quality, String:attribut
 		}
 	}
 
-	new Handle:weapon = TF2Items_CreateItem((preserve ? PRESERVE_ATTRIBUTES : OVERRIDE_ALL) | FORCE_GENERATION);
+	Handle weapon = TF2Items_CreateItem((preserve ? PRESERVE_ATTRIBUTES : OVERRIDE_ALL) | FORCE_GENERATION);
 	TF2Items_SetClassname(weapon, name);
 	TF2Items_SetItemIndex(weapon, index);
 	TF2Items_SetLevel(weapon, level);
 	TF2Items_SetQuality(weapon, quality);
-	new String:attributes[32][32];
-	new count = ExplodeString(attribute, ";", attributes, 32, 32);
-	if(count%2!=0)
+	char attributes[32][32];
+	int count = ExplodeString(attribute, ";", attributes, 32, 32);
+	if (count % 2 != 0)
 	{
 		count--;
 	}
 
-	if(count>0)
+	if (count > 0)
 	{
-		TF2Items_SetNumAttributes(weapon, count/2);
-		new i2 = 0;
-		for(new i = 0; i < count; i += 2)
+		TF2Items_SetNumAttributes(weapon, count / 2);
+		int i2 = 0;
+		for (int i = 0; i < count; i += 2)
 		{
-			new attrib = StringToInt(attributes[i]);
+			int attrib = StringToInt(attributes[i]);
 			if (attrib == 0)
 			{
 				LogError("Bad weapon attribute passed: %s ; %s", attributes[i], attributes[i+1]);
@@ -4045,24 +4181,24 @@ stock SpawnWeapon2(client, String:name[], index, level, quality, String:attribut
 		TF2Items_SetNumAttributes(weapon, 0);
 	}
 
-	if (weapon == INVALID_HANDLE)
+	if (weapon == null)
 	{
-		PrintToServer("[sarysapub1] Error: Invalid weapon spawned. client=%d name=%s idx=%d attr=%s", client, name, index, attribute);
+		PrintToServer("[CustomBots] Error: Invalid weapon spawned. client=%d name=%s idx=%d attr=%s", client, name, index, attribute);
 		return -1;
 	}
 
-	new entity = TF2Items_GiveNamedItem(client, weapon);
+	int entity = TF2Items_GiveNamedItem(client, weapon);
 
 	CloseHandle(weapon);
 
-	PrepareItem(client, entity, name, visible, model);
+	PrepareItem(client, entity, name, visible);
 
 	return entity;
 }
 
-stock PrepareWeapon(client, weapon, visibility=false, model)
+stock void PrepareWeapon(int client, int weapon, bool visibility = false)
 {
-	if(!visibility)
+	if (!visibility)
 	{
 		SetEntProp(weapon, Prop_Send, "m_iWorldModelIndex", -1);
 		SetEntPropFloat(weapon, Prop_Send, "m_flModelScale", 0.001);
@@ -4074,9 +4210,9 @@ stock PrepareWeapon(client, weapon, visibility=false, model)
 	EquipPlayerWeapon(client, weapon);
 }
 
-stock int EquipWearable(client, String:Mdl[], bool vm, weapon = 0, bool visactive = true)
-{ // ^ bad name probably
-	new wearable = CreateWearable(client, Mdl, vm);
+stock int EquipWearable(int client, bool vm, int weapon = 0, bool visactive = true)
+{
+	int wearable = CreateWearable(client, Mdl, vm);
 	if (wearable == -1) return -1;
 	wearableOwner[wearable] = client;
 	if (weapon > MaxClients)
@@ -4085,19 +4221,18 @@ stock int EquipWearable(client, String:Mdl[], bool vm, weapon = 0, bool visactiv
 		hasWearablesTied[weapon] = true;
 		onlyVisIfActive[wearable] = visactive;
 
-		new effects = GetEntProp(wearable, Prop_Send, "m_fEffects");
+		int effects = GetEntProp(wearable, Prop_Send, "m_fEffects");
 		if (weapon == GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon")) SetEntProp(wearable, Prop_Send, "m_fEffects", effects & ~32);
 		else SetEntProp(wearable, Prop_Send, "m_fEffects", effects |= 32);
 	}
 	return wearable;
 }
 
-stock int CreateWearable(int client, char[] model, bool vm) // Randomizer code :3
+stock int CreateWearable(int client, bool vm)
 {
-	new ent = CreateEntityByName(vm ? "tf_wearable_vm" : "tf_wearable");
+	int ent = CreateEntityByName(vm ? "tf_wearable_vm" : "tf_wearable");
 	if (!IsValidEntity(ent)) return -1;
-	SetEntProp(ent, Prop_Send, "m_nModelIndex", PrecacheModel(model));
-//	SetEntProp(ent, Prop_Send, "m_fEffects", 1);
+
 	SetEntProp(ent, Prop_Send, "m_fEffects", 129);
 	SetEntProp(ent, Prop_Send, "m_iTeamNum", GetClientTeam(client));
 	SetEntProp(ent, Prop_Send, "m_usSolidFlags", 4);
@@ -4105,14 +4240,13 @@ stock int CreateWearable(int client, char[] model, bool vm) // Randomizer code :
 	DispatchSpawn(ent);
 	SetVariantString("!activator");
 	ActivateEntity(ent);
-	TF2_EquipWearable(client, ent); // urg
+	TF2_EquipWearable(client, ent);
 	return ent;
 }
 
-// *sigh*
-stock TF2_EquipWearable(client, Ent)
+stock void TF2_EquipWearable(int client, int Ent)
 {
-	if (g_bSdkStarted == false || g_hSdkEquipWearable == INVALID_HANDLE)
+	if (g_bSdkStarted == false || g_hSdkEquipWearable == null)
 	{
 		TF2_SdkStartup();
 		LogMessage("Error: Can't call EquipWearable, SDK functions not loaded! If it continues to fail, reload plugin or restart server. Make sure your gamedata is intact!");
@@ -4125,14 +4259,14 @@ stock TF2_EquipWearable(client, Ent)
 
 stock bool TF2_SdkStartup()
 {
-	Handle hGameConf = LoadGameConfigFile("tf2items.randomizer");
-	if (hGameConf == INVALID_HANDLE)
+	Handle hGameConf = LoadGameConfigFile("Bots.Wearables");
+	if (hGameConf == null)
 	{
-		LogMessage("Couldn't load SDK functions (GiveWeapon). Make sure tf2items.randomizer.txt is in your gamedata folder! Restart server if you want wearable weapons.");
+		LogMessage("Couldn't load SDK functions. Make sure Bots.Wearables.txt is in your gamedata folder! Restart server if you want wearable weapons.");
 		return false;
 	}
 	StartPrepSDKCall(SDKCall_Player);
-	PrepSDKCall_SetFromConf(hGameConf, SDKConf_Virtual, "CTFPlayer::EquipWearable");
+	PrepSDKCall_SetFromConf(hGameConf, SDKConf_Virtual, "EquipWearable");
 	PrepSDKCall_AddParameter(SDKType_CBaseEntity, SDKPass_Pointer);
 	g_hSdkEquipWearable = EndPrepSDKCall();
 
@@ -4141,21 +4275,16 @@ stock bool TF2_SdkStartup()
 	return true;
 }
 
-stock PrepareItem(client, entity, const String:classname[], visibility=false, const String:model[])
+stock void PrepareItem(int client, int entity, const char[] classname, bool visibility = false)
 {
-	if (strlen(model) > 0 && StrContains(model, ".mdl") != -1)
+	if (!visibility)
 	{
-		SetEntProp(entity, Prop_Send, "m_nModelIndex", PrecacheModel(model));
-	}
-	if(!visibility)
-	{
-		if (HasEntProp(entity, Prop_Send, "m_iWorldModelIndex"))
-			SetEntProp(entity, Prop_Send, "m_iWorldModelIndex", -1);
+		SetEntProp(entity, Prop_Send, "m_iWorldModelIndex", -1);
 		SetEntPropFloat(entity, Prop_Send, "m_flModelScale", 0.001);
 	}
 	else
 	{
-		SetEntProp(entity, Prop_Send, "m_bValidatedAttachedEntity", 1); // Magic!
+		SetEntProp(entity, Prop_Send, "m_bValidatedAttachedEntity", 1);
 	}
 
 	if (StrContains(classname, "tf_wearable")==-1)
@@ -4171,12 +4300,12 @@ stock PrepareItem(client, entity, const String:classname[], visibility=false, co
 Handle S93SF_equipWearable = null;
 stock void Wearable_EquipWearable(int client, int wearable)
 {
-	if(S93SF_equipWearable==null)
+	if (S93SF_equipWearable == null)
 	{
-		Handle config=LoadGameConfigFile("equipwearable");
-		if(config==null)
+		Handle config = LoadGameConfigFile("Bots.Wearables");
+		if(config == null)
 		{
-			LogError("[FF2] EquipWearable gamedata could not be found; make sure /gamedata/equipwearable.txt exists.");
+			LogError("[CustomBots] Bots.Wearables gamedata could not be found.");
 			return;
 		}
 
@@ -4184,9 +4313,9 @@ stock void Wearable_EquipWearable(int client, int wearable)
 		PrepSDKCall_SetFromConf(config, SDKConf_Virtual, "EquipWearable");
 		CloseHandle(config);
 		PrepSDKCall_AddParameter(SDKType_CBaseEntity, SDKPass_Pointer);
-		if((S93SF_equipWearable=EndPrepSDKCall())==INVALID_HANDLE)
+		if ((S93SF_equipWearable=EndPrepSDKCall()) == null)
 		{
-			LogError("[FF2] Couldn't load SDK function (CTFPlayer::EquipWearable). SDK call failed.");
+			LogError("[CustomBots] Couldn't load SDK function (CTFPlayer::EquipWearable). SDK call failed.");
 			return;
 		}
 	}
@@ -4262,7 +4391,7 @@ stock bool TargetInRange(int client, int target, bool flare = false, float dista
 		GetClientEyePosition(client, pos);
 		GetClientAbsOrigin(target, targpos);
 		targpos[2] += 30.0;
-		
+
 		if (CheckTrace(client, target))
 		{
 			float flDistance = GetVectorDistance(pos, targpos);
@@ -4299,10 +4428,10 @@ stock bool TargetIsValid(int bot, int target)
 		return false;
 	if (!IsPlayerAlive(target))
 		return false;
-		
+
 	if (TF2_IsPlayerInCondition(target, TFCond_Ubercharged))
 		return false;
-	
+
 	return true;
 }
 
@@ -4314,23 +4443,23 @@ stock float GetBotAttackRange(int bot)
 		{
 			float flRange;
 			KeyValues kv = new KeyValues("BotIndexes");
-			
+
 			char sPath[PLATFORM_MAX_PATH];
 			BuildPath(Path_SM, sPath, sizeof sPath, "configs/botindexes.txt");
-			kv.ImportFromFile(sPath);			
-			
+			kv.ImportFromFile(sPath);
+
 			char sBotIndex[8];
 			IntToString(BotIndex[bot], sBotIndex, sizeof sBotIndex);
-			
+
 			if (!kv.JumpToKey(sBotIndex))
 			{
 				//PrintToChatAll("Could not find bot index: %i", BotIndex[bot]);
 				delete kv;
 				return 0.0;
 			}
-			
+
 			flRange = kv.GetFloat("range", 800.0);
-			
+
 			delete kv;
 			return flRange;
 		}
@@ -4361,151 +4490,135 @@ stock bool HasShield(int client)
 	return false;
 }
 
-
-
-
-
-
-
-
-
 /*
+
+Hitbox selection and positions
+
+This is where we determine how a bot will attack a target
+
+*/
+
 enum //hitgroups
 {
-	HITGROUP_GENERIC, 
-	HITGROUP_HEAD, 
-	HITGROUP_CHEST, 
-	HITGROUP_STOMACH, 
-	HITGROUP_LEFTARM, 
-	HITGROUP_RIGHTARM, 
-	HITGROUP_LEFTLEG, 
-	HITGROUP_RIGHTLEG, 
-	
+	HITGROUP_GENERIC,
+	HITGROUP_HEAD,
+	HITGROUP_CHEST,
+	HITGROUP_STOMACH,
+	HITGROUP_LEFTARM,
+	HITGROUP_RIGHTARM,
+	HITGROUP_LEFTLEG,
+	HITGROUP_RIGHTLEG,
+
 	NUM_HITGROUPS
 };
 
 int g_iHitBoxOrderHeadshot[] = //Gets hitboxes in this order
 {
-	HITGROUP_HEAD, 
-	HITGROUP_CHEST, 
-	HITGROUP_STOMACH, 
-	HITGROUP_GENERIC, 
-	HITGROUP_LEFTARM, 
-	HITGROUP_RIGHTARM, 
-	HITGROUP_LEFTLEG, 
-	HITGROUP_RIGHTLEG, 
+	HITGROUP_HEAD,
+	HITGROUP_CHEST,
+	HITGROUP_STOMACH,
+	HITGROUP_GENERIC,
+	HITGROUP_LEFTARM,
+	HITGROUP_RIGHTARM,
+	HITGROUP_LEFTLEG,
+	HITGROUP_RIGHTLEG,
 }
 
-stock bool GetHeadHitbox(int client, int entity, float vBestOut[3], float vEyeAngle[3])
+int g_iHitBoxOrderBullet[] =
+{
+	HITGROUP_STOMACH,
+	HITGROUP_CHEST,
+	HITGROUP_GENERIC,
+	HITGROUP_HEAD,
+	HITGROUP_LEFTARM,
+	HITGROUP_RIGHTARM,
+	HITGROUP_LEFTLEG,
+	HITGROUP_RIGHTLEG,
+}
+
+stock bool GetBestHitBox(int client, int entity, float vBestOut[3], bool head = false)
 {
 	Address pStudioHdr = Address(Dereference(Address(GetEntData(entity, g_iOffsetStudioHdr))));
 	if (pStudioHdr == Address_Null)
 		return false;
-	
-	int HitboxSet = GetEntProp(entity, Prop_Send, "m_nHitboxSet");
-	if (HitboxSet != 0)
+
+	int m_nHitboxSet = GetEntProp(entity, Prop_Send, "m_nHitboxSet");
+	if (m_nHitboxSet != 0)
 		return false;
-	
+
 	Address pHitBoxSet = pStudioHdr + Address(ReadInt(pStudioHdr + Address(0xB0)));
 	if (pHitBoxSet == Address_Null)
 		return false;
-	
+
 	int iNumHitboxes = ReadInt(pHitBoxSet + Address(0x4));
-	
+
 	pHitBoxSet += Address(0xC);
-	
+
 	//Loop all hitgroups
 	for (int i = 0; i < NUM_HITGROUPS; i++)
 	{
 		//Match hitgroup to order we want to check
-		int hitGroup = g_iHitBoxOrderHeadshot[i];
-		
+		int hitGroup = (head ? (g_iHitBoxOrderHeadshot[i]) : (g_iHitBoxOrderBullet[i]));
+
+		if (head && hitGroup != HITGROUP_HEAD)
+			continue;
+
 		for (int iHitBox = 0; iHitBox < iNumHitboxes; iHitBox++)
 		{
 			Address pbox = Address(pHitBoxSet + Address(iHitBox * 68));
 			if (pbox == Address_Null)
 				continue;
-			
+
 			int iBone = ReadInt(pbox);
 			int iGroup = ReadInt(pbox + Address(0x4));
-			
+
 			if (iGroup != hitGroup)
 				continue;
-			
+
 			float vBonePosition[3], vBoneAngles[3];
 			GetBonePosition(entity, iBone, vBonePosition, vBoneAngles);
-			
 			bool bVisible = false;
-			
-			if (iGroup == HITGROUP_HEAD)
+
+			if (head && iGroup == HITGROUP_HEAD)
 			{
 				float vMins[3]; vMins = ExtractVectorFromAddress(pbox + Address(0x8));
 				float vMaxs[3]; vMaxs = ExtractVectorFromAddress(pbox + Address(0x14));
-				
+
+				//Hitbox Size
 				float vSize[3];
 				vSize[0] = FloatAbs(vMaxs[0]) + FloatAbs(vMins[0]);
 				vSize[1] = FloatAbs(vMaxs[1]) + FloatAbs(vMins[1]);
 				vSize[2] = FloatAbs(vMaxs[2]) + FloatAbs(vMins[2]);
-				
+
 				//Hitbox Origin
 				float vCenter[3];
 				AddVectors(vMins, vMaxs, vCenter);
 				ScaleVector(vCenter, 0.5);
-				
+
 				//Angle vectors
 				float vForward[3], vLeft[3], vUp[3];
 				GetAngleVectors(vBoneAngles, vForward, vLeft, vUp);
-				
+
 				//Center bone pos to hitbox
 				vBonePosition[0] += vLeft[2] * vCenter[2];
 				vBonePosition[1] += vLeft[0] * vCenter[0];
 				vBonePosition[2] -= vLeft[2] * vCenter[1];
-				
-				bVisible = (IsPointVisible(client, entity, vEyeAngle, vBonePosition, hitGroup));
-				if(bVisible)
-				{
-				 	vBestOut = vBonePosition;
-					return true;
-				}
-				
-				for (int x = 1; x <= 4; x++)
-				{
-					//Left then right
-					if(x <= 2) vBonePosition[1] -= vUp[1] * (vMaxs[1] * 2); //MOVE TO LEFT SIDE OF HEAD
-					else       vBonePosition[1] += vUp[1] * (vMaxs[1] * 2); //MOVE TO RIGHT SIDE OF HEAD
-					
-					switch(x)
-					{
-						case 1: vBonePosition[0] += vForward[0] * (vMaxs[0] * 2); //MOVE TO BACK LEFT CORNER OF HEAD
-						case 2: vBonePosition[0] -= vForward[0] * (vMaxs[0] * 2); //MOVE TO FRONT LEFT CORNER OF HEAD
-						case 3: vBonePosition[0] += vForward[0] * (vMaxs[0] * 2); //MOVE TO BACK RIGHT CORNER OF HEAD
-						case 4: vBonePosition[0] -= vForward[0] * (vMaxs[0] * 2); //MOVE TO FRONT RIGHT CORNER OF HEAD
-					}
-					
-					bVisible = (IsPointVisible(client, entity, vEyeAngle, vBonePosition, hitGroup));
-					if(bVisible)
-					{
-						PrintToServer("VISIBLE MULTIPOINT %i ON TOP OF HEAD!", x);
-						
-					 	vBestOut = vBonePosition;
-				
-						return true;
-					}
-				}
 			}
-			
-			bVisible = (IsPointVisible(client, entity, vEyeAngle, vBonePosition, hitGroup));
-			
-			
+
+			float eyePos[3];
+			GetClientEyePosition(client, eyePos);
+			bVisible = (IsPointVisible(client, entity, eyePos, vBonePosition, hitGroup));
+
+
 			if (bVisible)
 			{
 				vBestOut = vBonePosition;
-				
+
 				return true;
 			}
 		}
 	}
-	
+
 	return false;
 }
 
@@ -4515,41 +4628,58 @@ stock int ReadInt(Address pAddr)
 	{
 		return -1;
 	}
-	
+
 	return LoadFromAddress(pAddr, NumberType_Int32);
 }
 
-stock float[] ExtractVectorFromAddress(Address address)
+stock float[] VelocityExtrapolate(int client, float eyepos[3])
 {
+	float absVel[3];
+	GetEntPropVector(client, Prop_Data, "m_vecVelocity", absVel);
+
 	float v[3];
-	
-	v[0] = view_as<float>(ReadInt(address + Address(0x0)));
-	v[1] = view_as<float>(ReadInt(address + Address(0x4)));
-	v[2] = view_as<float>(ReadInt(address + Address(0x8)));
-	
+
+	v[0] = eyepos[0] + (absVel[0] * GetTickInterval());
+	v[1] = eyepos[1] + (absVel[1] * GetTickInterval());
+	v[2] = eyepos[2] + (absVel[2] * GetTickInterval());
+
 	return v;
 }
 
-stock bool IsPointVisible(int looker, int target, float start[3], float point[3], int expectedHitGroup)
+stock bool IsPointVisible(int looker, int target, float start[3], float point[3], int expectedHitGroup, bool bHeahdshot = true)
 {
 	TR_TraceRayFilter(start, point, MASK_SHOT | CONTENTS_GRATE, RayType_EndPoint, AimTargetFilter, looker);
-	
-	//int hitGroup = TR_GetHitGroup();
+
+	int hitGroup = TR_GetHitGroup();
 	int hitEnt = TR_GetEntityIndex();
-	
+	//PrintToChatAll("Found Hitgroup: %i | Entity: %i | Target: %N", hitGroup, hitEnt, target);
+
 	if (!TR_DidHit() || hitEnt == target)
 	{
-		return true;
+		//Ignore hitgroup expectance if not headshot only.
+		if (bHeahdshot && hitGroup == expectedHitGroup)
+		{
+			return true;
+		}
+		else
+		{
+			return true;
+		}
 	}
-	
+
 	return false;
+}
+
+stock int LookupBone(int iEntity, const char[] szName)
+{
+	return SDKCall(g_hLookupBone, iEntity, szName);
 }
 
 public bool AimTargetFilter(int entity, int contentsMask, any iExclude)
 {
 	char class[64];
 	GetEntityClassname(entity, class, sizeof(class));
-	
+
 	if (StrEqual(class, "entity_medigun_shield"))
 	{
 		if (GetEntProp(entity, Prop_Send, "m_iTeamNum") == GetClientTeam(iExclude))
@@ -4565,9 +4695,10 @@ public bool AimTargetFilter(int entity, int contentsMask, any iExclude)
 	{
 		return false;
 	}
-	
+
 	return !(entity == iExclude);
 }
+
 
 stock void GetBonePosition(int iEntity, int iBone, float origin[3], float angles[3])
 {
@@ -4585,11 +4716,9 @@ stock int Dereference(Address pAddr, int iOffset = 0)
 	{
 		return -1;
 	}
-	
+
 	return ReadInt(Transpose(pAddr, iOffset));
 }
-
-*/
 
 stock int GetOpposingTeam(int team)
 {
@@ -4610,6 +4739,45 @@ stock bool IsCustomBot(int bot)
 		if (BotIndex[bot] > 0 || bIsHookedBot[bot])
 			return true;
 	}
-		
+
 	return false;
+}
+
+stock float[] ExtractVectorFromAddress(Address address)
+{
+	float v[3];
+
+	v[0] = view_as<float>(ReadInt(address + Address(0x0)));
+	v[1] = view_as<float>(ReadInt(address + Address(0x4)));
+	v[2] = view_as<float>(ReadInt(address + Address(0x8)));
+
+	return v;
+}
+
+stock int CreateParticle(int entity, char[] particleType, float offset = 0.0, bool attach = false)
+{
+	int particle = CreateEntityByName("info_particle_system");
+
+	char targetName[128];
+	float position[3];
+	GetEntPropVector(entity, Prop_Send, "m_vecOrigin", position);
+	position[2] += offset;
+	TeleportEntity(particle, position, NULL_VECTOR, NULL_VECTOR);
+
+	Format(targetName, sizeof(targetName), "target%i", entity);
+	DispatchKeyValue(entity, "targetname", targetName);
+
+	DispatchKeyValue(particle, "targetname", "tf2particle");
+	DispatchKeyValue(particle, "parentname", targetName);
+	DispatchKeyValue(particle, "effect_name", particleType);
+	DispatchSpawn(particle);
+	SetVariantString(targetName);
+	if(attach)
+	{
+		AcceptEntityInput(particle, "SetParent", particle, particle, 0);
+		SetEntPropEnt(particle, Prop_Send, "m_hOwnerEntity", entity);
+	}
+	ActivateEntity(particle);
+	AcceptEntityInput(particle, "start");
+	return particle;
 }
