@@ -1,17 +1,23 @@
+//VERY OLD
+//No idea if this even works anymore and I haven't touched it in over a year
+//
+//The original idea was to allow players to control bots while in spectator...
+//it worked but since spectator is handled by the server there tends to be severe delays with higher ping
+
 #include <sourcemod>
 #include <sdktools>
 #include <sdkhooks>
 #include <tf2_stocks>
 #include <tf2>
 #include <tf2items>
-#include <freak_fortress_2_extras>
+#include <freak_fortress_2_extras> //????
 
 //Game settings
 int bKillcount = 0;
 int rKillcount = 0;
 int KillTarget = 0;
 
-//This entire plugin needs a re-write
+//This syntax makes me want to vomit :C
 
 //Bot Settings
 Handle g_hBotQuota;
