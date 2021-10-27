@@ -92,6 +92,9 @@ float flHealthThreshold[MAXPLAYERS+1];
 float flHeightThreshold[MAXPLAYERS+1];
 float NoiseMakerDelay[MAXPLAYERS+1];
 float NoiseMakerDelayAdd[MAXPLAYERS+1];
+float BotHeadshotConfidence[MAXPLAYERS+1];
+float BotRocketConfidence[MAXPLAYERS+1];
+float BotPressureDist[MAXPLAYERS+1];
 int BotIndex[MAXPLAYERS+1];
 int BotAggroTarget[MAXPLAYERS+1];
 int iClassPriority[MAXPLAYERS+1];
@@ -1377,8 +1380,10 @@ public Action SetBotVars(Handle bTimer, int bot)
 
 			//Set bot behavior
 			AimDelayAdd[bot] = kv.GetFloat("aimdelay", 0.0); //Cooldown on autoaim usage
-			AimFOV[bot] = kv.GetFloat("aimfov", 180.0); //FoV for target acquisition
-			Inaccuracy[bot] = kv.GetFloat("inaccuracy", 0.0); //deviation to add onto autoaim
+			AimFOV[bot] = kv.GetFloat("aimfov", 90.0); //FoV for target acquisition
+			Inaccuracy[bot] = kv.GetFloat("inaccuracy", 25.0); //deviation to add onto autoaim
+			BotHeadshotConfidence[bot] = ClampFloat(kv.GetFloat("confidence_hs", 10.0), 1.0); //Confidence for bots to keep steady aim at closer range
+			BotRocketConfidence[bot] = kv.GetFloat("confidence_rj", 50.0); //Confidence for bots to choose whether or not they use a rocket jump node
 
 			AggroDelay[bot] = kv.GetFloat("aggrotime", 0.0); //How long a target is aggro'd for
 			iClassPriority[bot] = kv.GetNum("prioritize"); //Class priority
@@ -1386,6 +1391,7 @@ public Action SetBotVars(Handle bTimer, int bot)
 
 			flSniperAimTime[bot] = kv.GetFloat("aimtime", 1.0); //Steady rate for snipers
 			flHealthThreshold[bot] = kv.GetFloat("health_threshold", 0.2); //Health threshold for when bots will try to flee
+			BotPressureDist[bot] = kv.GetFloat("pressure_distance", 400.0); //How close a target has to be before bots begin to get nervous aim
 
 			flHeightThreshold[bot] = kv.GetFloat("height", 0.0); //Soldier height threshold
 
@@ -1672,10 +1678,14 @@ public void SetupLoadout(int bot, TFClassType class)
 			}
 
 			// Do we prefer melee
+			bPreferMelee[bot] = view_as<bool>(kv.GetNum("melee"));
+			
+			/*
 			if (kv.GetNum("melee") == 1)
 				bPreferMelee[bot] = true;
 			else
 				bPreferMelee[bot] = false;
+			*/
 
 			// Do we prefer to shoot ground positions
 			if (kv.GetNum("aimground") == 1)
@@ -2286,7 +2296,7 @@ public Action TF2_CalcIsAttackCritical(int bot, int weapon, char[] weaponname, b
 							}
 							default:
 							{
-								SetTargetViewAngles(bot, true);
+								SetTargetViewAngles(bot, true, false, false, BotPressureDist[bot], BotHeadshotConfidence[bot]);
 								AimDelay[bot] = GetEngineTime() + AimDelayAdd[bot];
 							}
 						}
@@ -2350,7 +2360,7 @@ public Action TF2_CalcIsAttackCritical(int bot, int weapon, char[] weaponname, b
 						{
 							case 61, 1006: //amby
 							{
-								SetTargetViewAngles(bot, true);
+								SetTargetViewAngles(bot, true, false, false, BotPressureDist[bot], BotHeadshotConfidence[bot]);
 								AimDelay[bot] = GetEngineTime() + AimDelayAdd[bot];
 							}
 							default:
@@ -2985,7 +2995,7 @@ public Action OnPlayerRunCmd(int bot, int &buttons, int &impulse, float vel[3], 
 
 							if ((buttons & IN_ATTACK) && AimDelay[bot] <= GetEngineTime())
 							{
-								SetTargetViewAngles(bot, true);
+								SetTargetViewAngles(bot, true, false, false, BotPressureDist[bot], BotHeadshotConfidence[bot]);
 							}
 						}
 					}
@@ -3023,6 +3033,8 @@ public Action OnPlayerRunCmd(int bot, int &buttons, int &impulse, float vel[3], 
 						if (ShouldRocketJump(bot))
 						{
 							float newAim[3];
+							
+							//Rocket Jump during combat
 							if (RJDelay[bot] <= GetEngineTime() && IsWeaponSlotActive(bot, TFWeaponSlot_Primary))
 							{
 								if (!NavJump[bot])
@@ -3049,6 +3061,8 @@ public Action OnPlayerRunCmd(int bot, int &buttons, int &impulse, float vel[3], 
 								buttons |= IN_JUMP;
 								Jump[bot] = false;
 							}
+							
+							//Check for rocket jump nodes
 							float BotPos[3];
 							GetClientAbsOrigin(bot, BotPos);
 							float JumpDistance[MAXRJPOS], JumpAim[3];
@@ -3084,7 +3098,7 @@ public Action OnPlayerRunCmd(int bot, int &buttons, int &impulse, float vel[3], 
 								}
 								case 3:
 								{
-									for (int i = 4; i < RJPosCount; i++)
+									for (int i = 0; i < RJPosCount; i++)
 									{
 										JumpDistance[i] = GetVectorDistance(BotPos, RJPos[i]);
 										if (IsWeaponSlotActive(bot, TFWeaponSlot_Primary) && GetHealth(bot) > 75.0)
@@ -3296,18 +3310,23 @@ stock bool IsPushClass(TFClassType class)
 
 stock bool Soldier_ValidRJPos(int bot, int nav, int team)
 {
-	if (RJTeam[nav] == team || RJTeam[nav] == 0) //correct team
+	int tryJump = GetRandomInt(1, 100); //Soldiers with lower confidence ratings are less likely to use jump nodes
+	if (BotRocketConfidence[bot] >= tryJump)
 	{
-		if (RJAir[nav] == 1) //Nav point requires bot to be in the air
+		if (RJTeam[nav] == team || RJTeam[nav] == 0) //correct team
 		{
-			if (!(GetEntityFlags(bot) & FL_ONGROUND)) //Not on ground
+			if (RJAir[nav] == 1) //Nav point requires bot to be in the air
+			{
+				if (!(GetEntityFlags(bot) & FL_ONGROUND)) //Not on ground
+					return true;
+				else
+					return false;
+			}
+			else if (RJCooldown[bot] <= GetEngineTime()) //Nav point does not require bot to be in the air
 				return true;
-			else
-				return false;
 		}
-		else if (RJCooldown[bot] <= GetEngineTime()) //Nav point does not require bot to be in the air
-			return true;
 	}
+	RJCooldown[bot] = GetEngineTime() + 4.0;
 	return false;
 }
 
@@ -3349,12 +3368,16 @@ public void TF2_OnConditionAdded(int client, TFCond condition)
 	}
 }
 
-stock float ClampFloat(float val, float min, float max = 999.0)
+stock float ClampFloat(float val, float min, float max = 999.0, bool upper = false)
 {
 	if (val < min)
 		val = min;
-	if (val > max)
-		val = max;
+	if (upper)
+	{
+		if (val > max)
+			val = max;
+	}
+	return val;
 }
 
 stock float GetRageMeter(int client)
@@ -3486,10 +3509,10 @@ stock int GetBotHealthThreshold(int bot)
 	return (RoundToFloor(flHealthThreshold[bot] * maxhp))
 }
 
-stock void SetTargetViewAngles(int bot, bool head = false, bool proj = false, ground = true)
+stock void SetTargetViewAngles(int bot, bool head = false, bool proj = false, ground = true, float pressure = 0.0, float confidence = 0.0)
 {
 	//TFClassType class = TF2_GetPlayerClass(bot);
-	float aimpos[3], aimangle[3], botpos[3], aimvec[3], angle[3];
+	float aimpos[3], aimangle[3], botpos[3], aimvec[3], angle[3], anglevariance;
 
 	int target = BotAggroTarget[bot];
 	//PrintToChatAll("SetViewAngle | Bot = %i | Target = %i", bot, target);
@@ -3504,6 +3527,7 @@ stock void SetTargetViewAngles(int bot, bool head = false, bool proj = false, gr
 	{
 		//GetClientEyePosition(target, aimpos);
 		GetBestHitBox(bot, target, aimpos, true);
+		anglevariance = DisruptAimByDistance(bot, target, pressure, confidence);
 	}
 	else if (!proj)
 	{
@@ -3536,13 +3560,35 @@ stock void SetTargetViewAngles(int bot, bool head = false, bool proj = false, gr
 	aimangle[1] += 180.0;
 
 	//Add inaccuracy based on bot's settings
-	aimangle[0] += GetRandomFloat((Inaccuracy[bot] * -1), Inaccuracy[bot]);
-	aimangle[1] += GetRandomFloat((Inaccuracy[bot] * -1), Inaccuracy[bot]);
+	aimangle[0] += GetRandomFloat((Inaccuracy[bot] * -1.0), Inaccuracy[bot]);
+	aimangle[1] += GetRandomFloat((Inaccuracy[bot] * -1.0), Inaccuracy[bot]);
+	
+	//Only add aim variance if it is non zero
+	if (anglevariance)
+	{
+		aimangle[0] += GetRandomFloat((anglevariance * -1.0), anglevariance);
+		aimangle[1] += GetRandomFloat((anglevariance * -1.0), anglevariance);
+	}
 
 	//clamp angles to prevent janking
 	ClampAngle(aimangle);
-	//SnapEyeAngles(bot, aimpos);
 	TeleportEntity(bot, NULL_VECTOR, aimangle, NULL_VECTOR);
+}
+
+stock float DisruptAimByDistance(int bot, int target, float pressureDist, float confidence)
+{
+	float botPos[3], targetPos[3], distance, variance;
+	GetClientAbsOrigin(bot, botPos);
+	GetClientAbsOrigin(target, targetPos);
+	
+	distance = GetVectorDistance(botPos, targetPos);
+	
+	//Begin adding more variance when the target is below this bot's pressure distance
+	if (distance <= pressureDist)
+	{
+		variance = ClampFloat((pressureDist / distance) / confidence, 3.0, 60.0, true);
+	}
+	return variance;
 }
 
 stock void SetPlayerViewAngles(int client, float angle[3], bool head = false, bool proj = false, ground = true)
@@ -3655,8 +3701,9 @@ stock float[] TryPredictPosition(int bot, int target, float TargetLocation[3], f
 		GetEntPropVector(target, Prop_Data, "m_vecVelocity", TargetVelocity);
 		flDistance = GetVectorDistance(BotPos, TargetLocation);
 		flTravelTime = flDistance / ProjSpeed;
+		
 		float gravity = GetConVarFloat(gravscale) / 100.0;
-		gravity = TargetVelocity[2] > 0.0 ? -gravity : gravity;
+		gravity = TargetVelocity[2] > 0.0 ? -gravity : gravity; //This shouldn't work but it for some fucking reason does so I'm leaving it
 
 		//Try and predict where the target will be when the projectile hits
 		TargetLocation[0] += TargetVelocity[0] * flTravelTime;
