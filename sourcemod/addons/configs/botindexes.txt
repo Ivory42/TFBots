@@ -52,6 +52,8 @@
 		
 		//SNIPER PARAMS
 		"aimtime" "0.6"				//How quickly (in seconds) we steady our aim as sniper (this will always have a bit of variance to make sniper aiming look more natural)
+		"confidence_hs"	"5.0"			//How well we perform when pressured at close range by our target (1.0 = no confidence | 50.0 = high confidence)
+		"pressure_distance"	"400.0"		//How close a target can get before we start to feel pressured and our aim is negatively affected
 		
 		//SOLDIER PARAMS
 		//These are used to configure soldier specific behaviors - This bot cannot pick soldier, so leaving this here as a reference
@@ -60,6 +62,7 @@
 		//"height"	"200.0"			//If target is this far above the ground, we will attempt an airshot anyway
 		//"rj_chance" "0.35"			//Chance we will attempt to use a Rocket Jump Node
 		//"rj_proficiency" "1"			//We will not attempt to rocket jump at nodes above this rating
+		//"confidence_rj"	"50"		//Value from 0 to 100 in how confident we are about rocket jumping. Higher values mean we are more likely to use a rocket jump node
 		
 		"scout" //This section determines the loadout for the bot when it is playing as a scout
 		{
