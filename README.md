@@ -1,6 +1,6 @@
 # Custom TF2 Bot Logic
 
-With Casual being mostly unplayable from catbots, and most community servers being dead, I decided to revamp TFBots to make them behave more like players.
+TFBots aren't very interesting or engaging to fight, so I decided to revamp them and make them behave more like players.
 This is by no means perfect but the bots are able to behave a lot more like players than normally.
 
 ## ConVars and Commands
