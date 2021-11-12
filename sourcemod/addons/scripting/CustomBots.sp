@@ -130,6 +130,9 @@ float RJPreservedAngles[MAXPLAYERS+1][3];
 float RJCooldown[MAXPLAYERS+1];
 float RJDelay[MAXPLAYERS+1];
 float flNavDelay[MAXPLAYERS+1];
+float CrouchDelay[MAXPLAYERS+1];
+float CrouchTimer[MAXPLAYERS+1];
+bool ShouldCrouch[MAXPLAYERS+1];
 bool NavJump[MAXPLAYERS+1];
 bool bInCaptureArea[MAXPLAYERS+1];
 bool bScoutSingleJump[MAXPLAYERS+1];
@@ -1679,13 +1682,6 @@ public void SetupLoadout(int bot, TFClassType class)
 
 			// Do we prefer melee
 			bPreferMelee[bot] = view_as<bool>(kv.GetNum("melee"));
-			
-			/*
-			if (kv.GetNum("melee") == 1)
-				bPreferMelee[bot] = true;
-			else
-				bPreferMelee[bot] = false;
-			*/
 
 			// Do we prefer to shoot ground positions
 			if (kv.GetNum("aimground") == 1)
@@ -1888,6 +1884,12 @@ stock void SpawnBotWeapon(int bot, char[] classname, int index, int effect, int 
 					TF2Attrib_SetByDefIndex(bot_wep, 2014, float(sheen));
 				if (kEffect != 0)
 					TF2Attrib_SetByDefIndex(bot_wep, 2013, float(kEffect));
+			}
+
+			if (index == 1071) //gold pan
+			{
+				//TF2Attrib_SetByName(bot_wep, "is australium item", 1.0);
+				TF2Attrib_SetByName(bot_wep, "item style override", 0.0);
 			}
 
 			if (aussie == 1)
@@ -2839,6 +2841,30 @@ public Action OnPlayerRunCmd(int bot, int &buttons, int &impulse, float vel[3], 
 
 						switch (class)
 						{
+							case TFClass_Heavy:
+							{
+								if (TF2_GetPlayerClass(BotAggroTarget[bot]) == TFClass_Sniper)
+								{
+									if (ShouldCrouch[bot])
+									{
+										buttons |= IN_DUCK;
+									}
+									if (CrouchTimer[bot] < GetEngineTime())
+									{
+										ShouldCrouch[bot] = false;
+									}
+									if (CrouchDelay[bot] < GetEngineTime())
+									{
+										int chance = GetRandomInt(1, 100);
+										if (chance >= 35)
+										{
+											ShouldCrouch[bot] = true;
+											CrouchTimer[bot] = GetEngineTime() + GetRandomFloat(0.1, 0.7);
+											CrouchDelay[bot] = GetEngineTime() + GetRandomFloat(1.0, 6.0);
+										}
+									}
+								}
+							}
 							case TFClass_DemoMan:
 							{
 								if (IsWeaponSlotActive(bot, TFWeaponSlot_Melee)) // demo with melee
@@ -3033,7 +3059,7 @@ public Action OnPlayerRunCmd(int bot, int &buttons, int &impulse, float vel[3], 
 						if (ShouldRocketJump(bot))
 						{
 							float newAim[3];
-							
+
 							//Rocket Jump during combat
 							if (RJDelay[bot] <= GetEngineTime() && IsWeaponSlotActive(bot, TFWeaponSlot_Primary))
 							{
@@ -3061,7 +3087,7 @@ public Action OnPlayerRunCmd(int bot, int &buttons, int &impulse, float vel[3], 
 								buttons |= IN_JUMP;
 								Jump[bot] = false;
 							}
-							
+
 							//Check for rocket jump nodes
 							float BotPos[3];
 							GetClientAbsOrigin(bot, BotPos);
@@ -3527,7 +3553,7 @@ stock void SetTargetViewAngles(int bot, bool head = false, bool proj = false, gr
 	{
 		//GetClientEyePosition(target, aimpos);
 		GetBestHitBox(bot, target, aimpos, true);
-		anglevariance = DisruptAimByDistance(bot, target, pressure, confidence);
+		anglevariance = GetAimDisruptance(bot, target, pressure, confidence);
 	}
 	else if (!proj)
 	{
@@ -3562,7 +3588,7 @@ stock void SetTargetViewAngles(int bot, bool head = false, bool proj = false, gr
 	//Add inaccuracy based on bot's settings
 	aimangle[0] += GetRandomFloat((Inaccuracy[bot] * -1.0), Inaccuracy[bot]);
 	aimangle[1] += GetRandomFloat((Inaccuracy[bot] * -1.0), Inaccuracy[bot]);
-	
+
 	//Only add aim variance if it is non zero
 	if (anglevariance)
 	{
@@ -3575,20 +3601,23 @@ stock void SetTargetViewAngles(int bot, bool head = false, bool proj = false, gr
 	TeleportEntity(bot, NULL_VECTOR, aimangle, NULL_VECTOR);
 }
 
-stock float DisruptAimByDistance(int bot, int target, float pressureDist, float confidence)
+stock float GetAimDisruptance(int bot, int target, float pressureDist, float confidence)
 {
-	float botPos[3], targetPos[3], distance, variance;
+	float botPos[3], targetPos[3], vel[3], distance, variance;
 	GetClientAbsOrigin(bot, botPos);
 	GetClientAbsOrigin(target, targetPos);
-	
+
 	distance = GetVectorDistance(botPos, targetPos);
-	
+
 	//Begin adding more variance when the target is below this bot's pressure distance
 	if (distance <= pressureDist)
 	{
 		variance = ClampFloat((pressureDist / distance) / confidence, 3.0, 60.0, true);
 	}
-	return variance;
+	GetEntPropVector(target, Prop_Data, "m_vecVelocity", vel);
+	float speed = GetVectorLength(vel);
+	float factor = speed / 300.0;
+	return variance * factor;
 }
 
 stock void SetPlayerViewAngles(int client, float angle[3], bool head = false, bool proj = false, ground = true)
@@ -3701,7 +3730,7 @@ stock float[] TryPredictPosition(int bot, int target, float TargetLocation[3], f
 		GetEntPropVector(target, Prop_Data, "m_vecVelocity", TargetVelocity);
 		flDistance = GetVectorDistance(BotPos, TargetLocation);
 		flTravelTime = flDistance / ProjSpeed;
-		
+
 		float gravity = GetConVarFloat(gravscale) / 100.0;
 		gravity = TargetVelocity[2] > 0.0 ? -gravity : gravity; //This shouldn't work but it for some fucking reason does so I'm leaving it
 
