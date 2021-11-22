@@ -30,6 +30,7 @@ This is by no means perfect but the bots are able to behave a lot more like play
     - Soldiers can be configured to shoot the ground position of an airborn player instead of shooting where the target currently is
     - Soldiers will attempt to market garden if they are given a Market Gardener
     - Soldiers will pull out their melee and flee if they drop below a health threshold and have the escape plan equipped
+    - Soldiers know how to use The Rocket Jumper properly
     - Demomen will hold off on charging until they see an enemy if a shield is equipped
     - Demomen with a shield will not cancel their charge by swinging mindlessly
     - Pyros with flareguns will attempt flare combos with airblast
@@ -82,11 +83,8 @@ Check `scripting/include/custombots.inc` for a more detailed explanation of each
 
 #### Forwards
 - `CB_OnBotResupply` - Called when a hooked bot is resupplied
-- `CB_OnBotAttack` - Called when a hooked bot performs any attack
 - `CB_OnBotDeath` - Called when a hooked bot is killed
-- `CB_OnBotJump`  - Called when a hooked bot jumps
 - `CB_OnBotBlastJump` - Called when a hooked bot attempts to blast jump
-- `CB_OnBotTakeDamage` - Called when a hooked bot takes damage
 
 
 ## FUTURE PLANS
@@ -97,4 +95,3 @@ Check `scripting/include/custombots.inc` for a more detailed explanation of each
 - Give scouts a bit of a better system for jumping (allow them to detect incoming projectiles and properly dodge in time)
 - Allow bots to prioritize specific classes
 - Allow medics to prioritize heal targets
-- Rocket Jumper + Market Gardener bot (Soldiers will currently use the Rocket Jumper like any other Rocket Launcher... I want to fix this!)
