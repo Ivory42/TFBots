@@ -44,6 +44,7 @@
 		"aggrotime"	 "3.0" 			//duration before we break off and try to find a new target
 		"prioritize" "2" 			//Class index we prioritize over all others
 		"health_threshold"	"0.22" 		//Below this health percentage we will try to flee if possible
+		"health_override"	"0"		//If non-zero, how much health we have
 		
 		//MOVEMENT PARAMS
 		"preferjump" "1" 			//Do we prefer to jump while in combat
