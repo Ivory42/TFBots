@@ -1353,8 +1353,11 @@ public Action BotSetMaxHealth(int bot, int &maxHealth)
 {
 	if (IsCustomBot(bot))
 	{
-		maxHealth = BotHealthOverride[bot];
-		return Plugin_Changed;
+		if (BotHealthOverride[bot] > 0)
+		{
+			maxHealth = BotHealthOverride[bot];
+			return Plugin_Changed;
+		}
 	}
 	return Plugin_Continue;
 }
