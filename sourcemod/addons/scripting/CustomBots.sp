@@ -117,6 +117,7 @@ int iPreservedAmmoP[MAXPLAYERS+1];
 int iPreservedClipP[MAXPLAYERS+1];
 int iPreservedAmmoS[MAXPLAYERS+1];
 int iPreservedClipS[MAXPLAYERS+1];
+int BotHealthOverride[MAXPLAYERS+1];
 float flBotKeepPrimaryDelay[MAXPLAYERS+1];
 float flBotAmmoDuration[MAXPLAYERS+1] = FAR_FUTURE;
 float flAmmoPreserveDelay[MAXPLAYERS+1];
@@ -148,10 +149,7 @@ char sBotDisconnectMessage[128]; //Message to use for bot disconnect
 
 GlobalForward g_BotResupply;
 GlobalForward g_BotDeath;
-GlobalForward g_BotAttack;
-GlobalForward g_BotJump;
 GlobalForward g_BotRocketJump;
-GlobalForward g_BotTakeDamage;
 
 ConVar g_playerBot;
 
@@ -193,11 +191,8 @@ public void OnPluginStart()
 
 	//Forwards.. some of these are a bit useless, will probably rework forwards at a future date
 	g_BotResupply = new GlobalForward("CB_OnBotResupply", ET_Ignore, Param_Cell, Param_Cell, Param_Cell);
-	g_BotAttack = new GlobalForward("CB_OnBotAttack", ET_Event, Param_Cell, Param_Cell, Param_Cell, Param_Cell, Param_Cell);
 	g_BotDeath = new GlobalForward("CB_OnBotDeath", ET_Ignore, Param_Cell, Param_Cell, Param_Cell, Param_Cell, Param_Cell);
-	g_BotJump = new GlobalForward("CB_OnBotJump", ET_Ignore, Param_Cell, Param_Cell, Param_Cell);
 	g_BotRocketJump = new GlobalForward("CB_OnBotBlastJump", ET_Ignore, Param_Cell, Param_Cell, Param_Cell, Param_Cell);
-	g_BotTakeDamage = new GlobalForward("CB_OnBotTakeDamage", ET_Single, Param_Cell, Param_Cell, Param_Cell, Param_Any, Param_Cell, Param_Cell, Param_Cell);
 
 	//debug for testing bot aim
 	g_playerBot = CreateConVar("tf_bot_allow_player_aim", "0", "Allow players to aim like bots");
@@ -244,7 +239,7 @@ public void OnPluginStart()
 		SetFailState("Failed to prepare the SDKCall for giving cosmetics. Try updating gamedata or restarting your server.");
 	}
 
-	for (new i = 1; i <= MaxClients; i++)
+	for (int i = 1; i <= MaxClients; i++)
 	{
 		if (IsValidClient(i))
 			OnClientPutInServer(i);
@@ -1337,9 +1332,9 @@ public void FreeBotIndexes()
 
 public void OnClientPutInServer(int client)
 {
-	SDKHook(client, SDKHook_OnTakeDamageAlive, OnTakeDamage);
 	if (IsFakeClient(client))
 	{
+		SDKHook(client, SDKHook_GetMaxHealth, BotSetMaxHealth);
 		IsScoped[client] = false;
 		HeadShotDelay[client] = FAR_FUTURE;
 		if (ShouldBotHook)
@@ -1352,6 +1347,16 @@ public void OnClientPutInServer(int client)
 		}
 		ShouldBotHook = false;
 	}
+}
+
+public Action BotSetMaxHealth(int bot, int &maxHealth)
+{
+	if (IsCustomBot(bot))
+	{
+		maxHealth = BotHealthOverride[bot];
+		return Plugin_Changed;
+	}
+	return Plugin_Continue;
 }
 
 public Action SetBotVars(Handle bTimer, int bot)
@@ -1680,6 +1685,12 @@ public void SetupLoadout(int bot, TFClassType class)
 				return;
 			}
 
+			BotHealthOverride[bot] = kv.GetNum("override_health", 0);
+			if (BotHealthOverride[bot] > 0)
+			{
+				SetEntityHealth(bot, BotHealthOverride[bot]);
+			}
+
 			// Do we prefer melee
 			bPreferMelee[bot] = view_as<bool>(kv.GetNum("melee"));
 
@@ -1932,36 +1943,6 @@ public int GetPlayersOnTeam(int team)
 	return count;
 }
 
-public Action OnTakeDamage(int bot, int &attacker, int &inflictor, float &damage, int &damagetype, int &weapon, float damageForce[3], float damagePosition[3])
-{
-	if (IsValidClient(bot))
-	{
-		if (IsCustomBot(bot))
-		{
-			bool IsCritical = false;
-			float newDamage = damage;
-			if (damagetype == DMG_CRIT)
-				IsCritical = true;
-
-			Call_StartForward(g_BotTakeDamage);
-
-			Call_PushCell(bot);
-			Call_PushCell(BotIndex[bot]);
-			Call_PushCell(bIsHookedBot[bot]);
-			Call_PushCell(damage);
-			Call_PushCell(IsCritical);
-			Call_PushCell(attacker);
-			Call_PushCell(inflictor);
-
-			Call_Finish(newDamage);
-
-			damage = newDamage;
-			return Plugin_Changed;
-		}
-	}
-	return Plugin_Continue;
-}
-
 public Action PlayerHurt(Handle pEvent, const char[] name, bool dontBroadcast)
 {
 	//int attacker = GetClientOfUserId(GetEventInt(pEvent, "attacker"));
@@ -2058,7 +2039,7 @@ public Action RoundStarted(Handle event, const char[] name, bool dontBroadcast)
 	{
 		if (IsValidClient(i) && IsCustomBot(i))
 		{
-			CreateTimer(0.25, ClientTimer, i, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
+			CreateTimer(0.25, BotThink, i, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 		}
 	}
 	RoundInProgress = true;
@@ -2066,7 +2047,7 @@ public Action RoundStarted(Handle event, const char[] name, bool dontBroadcast)
 		Captures = 0;
 }
 
-public Action ClientTimer(Handle Timer, int bot)
+public Action BotThink(Handle Timer, int bot)
 {
 	if (!RoundInProgress || !IsValidClient(bot) || !IsCustomBot(bot))
 		return Plugin_Stop;
@@ -2074,6 +2055,10 @@ public Action ClientTimer(Handle Timer, int bot)
 	if (PathObstructed(bot))
 	{
 		JumpTimer[bot] = GetEngineTime() + 0.2;
+	}
+	if (TF2_GetPlayerClass(bot) == TFClass_Soldier)
+	{
+		//Soldier_CheckRJump(bot, 400.0);
 	}
 	return Plugin_Continue;
 }
@@ -2226,15 +2211,6 @@ public Action TF2_CalcIsAttackCritical(int bot, int weapon, char[] weaponname, b
 
 		//Call OnBotAttack
 		Action aResult = Plugin_Continue;
-		Call_StartForward(g_BotAttack);
-
-		Call_PushCell(bot);
-		Call_PushCell(BotIndex[bot]);
-		Call_PushCell(bIsHookedBot[bot]);
-		Call_PushCell(wIndex);
-		Call_PushCell(result);
-
-		Call_Finish(aResult);
 
 		if (aResult == Plugin_Continue)
 		{
@@ -2242,6 +2218,8 @@ public Action TF2_CalcIsAttackCritical(int bot, int weapon, char[] weaponname, b
 			{
 				case TFClass_Soldier:
 				{
+					if (wIndex == 237) return Plugin_Continue;
+
 					if (AimDelay[bot] <= GetEngineTime())
 					{
 						if (IsWeaponSlotActive(bot, 0))
@@ -2418,19 +2396,82 @@ stock void DoAntiAim(int client, int aimtype, bool lagComp = true)
 
 ***********************************************************************************************************/
 
+//When a soldier is not in combat, we will check to see if there is an obstacle we can rocket jump up to
+stock bool Soldier_CheckRJump(int bot, float distance)
+{
+	float botPos[3], forwardPos[3];
+	GetClientEyePosition(bot, botPos);
+	GetEntPropVector(bot, Prop_Send, "m_vecVelocity", forwardPos);
+	forwardPos[2] = 0.0;
+	NormalizeVector(forwardPos, forwardPos);
+
+	//Get the direction we are moving, and check the specified distance
+	ScaleVector(forwardPos, distance);
+	Handle jumpTrace = TR_TraceRayFilterEx(botPos, forwardPos, MASK_PLAYERSOLID, RayType_EndPoint, CheckCollision, bot);
+	if (TR_DidHit(jumpTrace))
+	{
+		float botDirection[3], forwardAngle[3], testAngle[3], testPos[3];
+		bool isLedge;
+		MakeVectorFromPoints(forwardPos, botPos, botDirection);
+		GetVectorAngles(botDirection, forwardAngle);
+
+		for (float angle = 20.0; angle <= 60.0; angle += 10.0)
+		{
+			testAngle = forwardAngle;
+			testAngle[0] -= angle;
+			GetAngleVectors(testAngle, testPos, NULL_VECTOR, NULL_VECTOR);
+			NormalizeVector(testPos, testPos);
+			ScaleVector(testPos, distance);
+
+			Handle testTrace = TR_TraceRayFilterEx(botPos, testPos, MASK_PLAYERSOLID, RayType_EndPoint, CheckCollision, bot);
+			if (TR_DidHit(testTrace))
+			{
+				CloseHandle(testTrace);
+				if (angle >= 60.0)
+				{
+					//did not find top of obstacle, this is probably a wall that cannot be traversed
+					isLedge = false;
+					break;
+				}
+				continue;
+			}
+			CloseHandle(testTrace);
+			break;
+		}
+
+		//If we don't hit anything, then we found the top of the ledge we can jump to
+		if (isLedge && ShouldRocketJump(bot, botPos, true)) //make sure we can actually rocket jump
+		{
+			RJDelay[bot] = GetEngineTime()+0.2;
+			/*
+			float distanceToLedge = GetVectorDistance(botPos, testPos);
+			float jumpAngle[3];
+			jumpAngle[1] = testAngle[1] += 150.0;
+			jumpAngle[0] = (testAngle[0] * -1.0) += (distanceToLedge / testAngle[0]);
+
+			Soldier_JumpToLedge(bot, jumpAngle);
+			CloseHandle(jumpTrace);
+			*/
+			return true;
+		}
+	}
+	CloseHandle(jumpTrace);
+	return false;
+}
 
 //Check to see if bot is stuck on an object
 stock bool PathObstructed(int client)
 {
 	float clPos[3], clEyePos[3];
-	float vecBoxMin[3] = {-30.0, -30.0, 15.0};
-	float vecBoxMax[3] = {30.0, 30.0, 40.0};
+	float vecBoxMin[3] = {-50.0, -50.0, 25.0};
+	float vecBoxMax[3] = {50.0, 50.0, 60.0};
+
 	GetClientAbsOrigin(client, clPos);
 	Handle HullTrace = TR_TraceHullFilterEx(clPos, clPos, vecBoxMin, vecBoxMax, MASK_PLAYERSOLID, CheckCollision, client); //Check around bot to see if they are being blocked
 	if (TR_DidHit(HullTrace))
 	{
 		GetClientEyePosition(client, clEyePos);
-		float vecBoxMin2[3] = {-50.0, -50.0, -5.0};
+		float vecBoxMin2[3] = {-50.0, -50.0, 0.0};
 		float vecBoxMax2[3] = {50.0, 50.0, 20.0};
 		Handle EyeTrace = TR_TraceHullFilterEx(clEyePos, clEyePos, vecBoxMin2, vecBoxMax2, MASK_PLAYERSOLID, CheckCollision, client); //Check around eye height, make sure it's an object that can be jumped over
 		if (TR_DidHit(EyeTrace))
@@ -2767,28 +2808,11 @@ public Action OnPlayerRunCmd(int bot, int &buttons, int &impulse, float vel[3], 
 						if (!bScoutSingleJump[bot])
 							DoubleJumpTimer[bot] = GetEngineTime() + GetRandomFloat(0.1, 0.25);
 					}
-
-					Call_StartForward(g_BotJump);
-
-					Call_PushCell(bot);
-					Call_PushCell(BotIndex[bot]);
-					Call_PushCell(bIsHookedBot[bot]);
-
-					Call_Finish();
-
 					JumpTimer[bot] = FAR_FUTURE;
 				}
 				if (DoubleJumpTimer[bot] <= GetEngineTime())
 				{
 					buttons |= IN_JUMP;
-					Call_StartForward(g_BotJump);
-
-					Call_PushCell(bot);
-					Call_PushCell(BotIndex[bot]);
-					Call_PushCell(bIsHookedBot[bot]);
-
-					Call_Finish();
-
 					JumpTimer[bot] = FAR_FUTURE;
 					DoubleJumpTimer[bot] = FAR_FUTURE;
 				}
@@ -2816,7 +2840,7 @@ public Action OnPlayerRunCmd(int bot, int &buttons, int &impulse, float vel[3], 
 
 					float flDistance = GetVectorDistance(botPos, targetPos);
 
-					int pWeapon = GetEntPropEnt(bot, Prop_Send, "m_hActiveWeapon");
+					int pWeapon = GetPlayerWeaponSlot(bot, TFWeaponSlot_Primary);
 					int pIndex;
 					if (IsValidEntity(pWeapon) && pWeapon > MaxClients)
 						pIndex = GetEntProp(pWeapon, Prop_Send, "m_iItemDefinitionIndex");
@@ -2830,6 +2854,13 @@ public Action OnPlayerRunCmd(int bot, int &buttons, int &impulse, float vel[3], 
 					int mIndex;
 					if (IsValidEntity(mWeapon) && mWeapon > MaxClients)
 						mIndex = GetEntProp(mWeapon, Prop_Send, "m_iItemDefinitionIndex");
+
+					int activeWeapon = GetEntPropEnt(bot, Prop_Send, "m_hActiveWeapon");
+					int activeIndex;
+					if (IsValidEntity(activeWeapon) && activeWeapon > MaxClients)
+					{
+						activeIndex = GetEntProp(activeWeapon, Prop_Send, "m_iItemDefinitionIndex");
+					}
 
 					if (!bFleeing[bot] && class != TFClass_Sniper && class != TFClass_Medic && SpyIsAttacking(bot, class))
 					{
@@ -2938,6 +2969,33 @@ public Action OnPlayerRunCmd(int bot, int &buttons, int &impulse, float vel[3], 
 										}
 									}
 								}
+								switch (activeIndex)
+								{
+									case 237: //Rocket Jumper
+									{
+										float targetAngle[3];
+										if (TF2_IsPlayerInCondition(bot, TFCond_BlastJumping))
+										{
+											if (Soldier_OverSurface(bot))
+											{
+												Soldier_DoRocketJump(bot, vel, _, buttons, activeIndex);
+											}
+											else
+												buttons &= ~IN_ATTACK;
+										}
+										else if (Soldier_GetMarketGardenAngle(bot, botPos, targetPos, targetAngle) && IsOnGround(bot))
+										{
+											float jumpAngle[3] = {80.0, 160.0, 0.0};
+											jumpAngle[0] -= ClampFloat(flDistance / 50.0, 0.0, 20.0);
+											//PrintCenterTextAll("Can Market Garden\n Angle: %.1f", jumpAngle[0]);
+											Soldier_DoRocketJump(bot, vel, jumpAngle, buttons, activeIndex, 1.3, 1.6);
+										}
+										else
+										{
+											buttons &= ~IN_ATTACK;
+										}
+									}
+								}
 							}
 						}
 					}
@@ -2956,7 +3014,29 @@ public Action OnPlayerRunCmd(int bot, int &buttons, int &impulse, float vel[3], 
 											if (GetHealth(bot) <= GetBotHealthThreshold(bot))
 											{
 												if (IsWeaponSlotActive(bot, TFWeaponSlot_Primary))
-													TF2_SwitchToSlot(bot, TFWeaponSlot_Melee);
+													TryKeepSlot(bot, GetPlayerWeaponSlot(bot, TFWeaponSlot_Primary), GetPlayerWeaponSlot(bot, TFWeaponSlot_Secondary), TFWeaponSlot_Melee, 4.0, buttons);
+													//TF2_SwitchToSlot(bot, TFWeaponSlot_Melee);
+											}
+										}
+									}
+								}
+								switch (activeIndex)
+								{
+									case 237: //rocket Jumper
+									{
+										buttons &= ~IN_ATTACK;
+										if (flDistance <= 300.0)
+										{
+											if (ShouldRocketJump(bot, botPos, false))
+											{
+												float jumpAngle[3];
+												GetClientEyeAngles(bot, jumpAngle);
+												jumpAngle[0] = 60.0;
+												Soldier_DoRocketJump(bot, vel, jumpAngle, buttons, activeIndex);
+											}
+											else if (IsValidEntity(sWeapon))
+											{
+												TryKeepSlot(bot, GetPlayerWeaponSlot(bot, TFWeaponSlot_Primary), GetPlayerWeaponSlot(bot, TFWeaponSlot_Secondary), TFWeaponSlot_Secondary, 4.0, buttons);
 											}
 										}
 									}
@@ -3038,6 +3118,8 @@ public Action OnPlayerRunCmd(int bot, int &buttons, int &impulse, float vel[3], 
 					{
 						int pWeapon = GetEntPropEnt(bot, Prop_Send, "m_hActiveWeapon");
 						int SoldierPrimary = GetEntProp(pWeapon, Prop_Send, "m_iItemDefinitionIndex");
+						float pos[3];
+						GetClientEyePosition(bot, pos);
 						if (TF2_IsPlayerInCondition(bot, TFCond_BlastJumping) && RJForwardDelay[bot] <= GetEngineTime())
 						{
 							if (NavJump[bot] && !ZeroVector(RJPreservedAngles[bot]))
@@ -3056,7 +3138,7 @@ public Action OnPlayerRunCmd(int bot, int &buttons, int &impulse, float vel[3], 
 							}
 						}
 
-						if (ShouldRocketJump(bot))
+						if (ShouldRocketJump(bot, pos, true))
 						{
 							float newAim[3];
 
@@ -3065,21 +3147,11 @@ public Action OnPlayerRunCmd(int bot, int &buttons, int &impulse, float vel[3], 
 							{
 								if (!NavJump[bot])
 								{
-									vel = moveForward(vel, 500.0);
 									GetClientEyeAngles(bot, newAim);
 									newAim[0] = 60.0;
 									newAim[1] = 160.0;
 									newAim[2] = 0.0;
-									TeleportEntity(bot, NULL_VECTOR, newAim, NULL_VECTOR);
-									buttons |= IN_JUMP;
-									buttons |= IN_DUCK;
-									buttons |= IN_ATTACK;
-									vel = moveForward(vel, 500.0);
-									RJDelay[bot] = FAR_FUTURE;
-									RJForwardDelay[bot] = GetEngineTime() + 0.2;
-									RJForwardTime[bot] = GetEngineTime() + 1.2;
-
-									CallRocketJump(bot, SoldierPrimary);
+									Soldier_DoRocketJump(bot, vel, newAim, buttons, SoldierPrimary);
 								}
 							}
 							if (Jump[bot])
@@ -3108,16 +3180,7 @@ public Action OnPlayerRunCmd(int bot, int &buttons, int &impulse, float vel[3], 
 												JumpAim[1] = RJAngles[i][1];
 												JumpAim[2] = 0.0;
 												RJPreservedAngles[bot] = RJNewAngles[i];
-												TeleportEntity(bot, NULL_VECTOR, JumpAim, NULL_VECTOR);
-												buttons |= IN_JUMP;
-												buttons |= IN_DUCK;
-												buttons |= IN_ATTACK;
-												vel = moveForward(vel, 500.0);
-												RJForwardDelay[bot] = GetEngineTime() + 0.08;
-												RJForwardTime[bot] = GetEngineTime() + 1.2;
-												RJCooldown[bot] = GetEngineTime() + 5.0;
-
-												CallRocketJump(bot, SoldierPrimary);
+												Soldier_DoRocketJump(bot, vel, JumpAim, buttons, SoldierPrimary);
 											}
 										}
 									}
@@ -3136,16 +3199,7 @@ public Action OnPlayerRunCmd(int bot, int &buttons, int &impulse, float vel[3], 
 												JumpAim[1] = RJAngles[i][1];
 												JumpAim[2] = 0.0;
 												RJPreservedAngles[bot] = RJNewAngles[i];
-												TeleportEntity(bot, NULL_VECTOR, JumpAim, NULL_VECTOR);
-												buttons |= IN_JUMP;
-												buttons |= IN_DUCK;
-												buttons |= IN_ATTACK;
-												vel = moveForward(vel, 500.0);
-												RJForwardDelay[bot] = GetEngineTime() + 0.08;
-												RJForwardTime[bot] = GetEngineTime() + 1.2;
-												RJCooldown[bot] = GetEngineTime() + 5.0;
-
-												CallRocketJump(bot, SoldierPrimary);
+												Soldier_DoRocketJump(bot, vel, JumpAim, buttons, SoldierPrimary);
 											}
 										}
 									}
@@ -3158,6 +3212,78 @@ public Action OnPlayerRunCmd(int bot, int &buttons, int &impulse, float vel[3], 
 		}
 	}
 	return Plugin_Continue;
+}
+
+stock void Soldier_DoRocketJump(int bot, float vel[3], float jumpAngle[3] = {60.0, 160.0, 0.0}, int &buttons, int weapon, float delay = 2.0, float forwardTime = 1.2)
+{
+	vel = moveForward(vel, 500.0);
+	TeleportEntity(bot, NULL_VECTOR, jumpAngle, NULL_VECTOR);
+	buttons |= IN_JUMP;
+	buttons |= IN_DUCK;
+	buttons |= IN_ATTACK;
+	vel = moveForward(vel, 500.0);
+	RJDelay[bot] = FAR_FUTURE;
+	RJCooldown[bot] = GetEngineTime() + delay;
+	RJForwardDelay[bot] = GetEngineTime() + 0.28;
+	RJForwardTime[bot] = GetEngineTime() + forwardTime;
+
+	CallRocketJump(bot, weapon);
+}
+
+stock bool IsOnGround(int bot)
+{
+	if (GetEntityFlags(bot) & FL_ONGROUND)
+		return true;
+	return false;
+}
+
+stock void Soldier_JumpToLedge(int bot, float vel, float jumpAngle[3] = {60.0, 160.0, 0.0}, int &buttons)
+{
+	TeleportEntity(bot, NULL_VECTOR, jumpAngle, NULL_VECTOR);
+	buttons |= IN_JUMP;
+	buttons |= IN_DUCK;
+	buttons |= IN_ATTACK;
+	RJDelay[bot] = FAR_FUTURE;
+	RJForwardDelay[bot] = GetEngineTime() + 0.2;
+	RJForwardTime[bot] = GetEngineTime() + 1.2;
+}
+
+stock bool Soldier_GetMarketGardenAngle(int bot, float botPos[3], float targPos[3], float angle[3])
+{
+	bool result = false;
+	if (!ShouldRocketJump(bot, botPos, false))
+	{
+		return false;
+	}
+	float targetVector[3];
+	MakeVectorFromPoints(targPos, botPos, targetVector);
+	GetVectorAngles(targetVector, angle);
+	if (angle[0] >= -75.0)
+	{
+		result = true;
+	}
+	if (GetVectorDistance(botPos, targPos) > 1300.0)
+	{
+		result = false;
+	}
+	return result;
+}
+
+stock bool Soldier_OverSurface(int bot)
+{
+	float pos[3];
+	float vecBoxMin[3] = {-50.0, -50.0, -35.0};
+	float vecBoxMax[3] = {50.0, 50.0, 0.0};
+
+	GetClientAbsOrigin(bot, pos);
+	Handle HullTrace = TR_TraceHullFilterEx(pos, pos, vecBoxMin, vecBoxMax, MASK_PLAYERSOLID, CheckCollision, bot);//Check below bot
+	if (TR_DidHit(HullTrace))
+	{
+		CloseHandle(HullTrace);
+		return true;
+	}
+	CloseHandle(HullTrace);
+	return false;
 }
 
 stock void DemoknightPreventCharge(int bot, int &buttons)
@@ -3421,20 +3547,38 @@ stock bool SpyIsAttacking(int bot, TFClassType class)
 	return true;
 }
 
-stock bool ShouldRocketJump(int bot)
+stock bool ShouldRocketJump(int bot, float pos[3], bool checkHealth = true)
 {
+	bool result = false;
+	if (RJCooldown[bot] >= GetEngineTime()) return false;
 	if (IsValidClient(bot) && IsCustomBot(bot))
 	{
-		int secondary = GetPlayerWeaponSlot(bot, TFWeaponSlot_Secondary);
-		if (!IsValidEntity(secondary)) //No secondary, likely has gunboats
+		//Check if there is an object above us
+		float endPos[3];
+		endPos = pos;
+		endPos[2] += 200.0;
+		Handle trace = TR_TraceRayFilterEx(pos, endPos, MASK_PLAYERSOLID, RayType_EndPoint, FilterSelf, bot);
+		if (!TR_DidHit(trace))
 		{
-			if (GetHealth(bot) > 30)
-				return true;
+			result = true;
 		}
-		else if (GetHealth(bot) > 55)
-			return true;
+		CloseHandle(trace);
+
+		if (checkHealth && result)
+		{
+			int secondary = GetPlayerWeaponSlot(bot, TFWeaponSlot_Secondary);
+			if (!IsValidEntity(secondary)) //No secondary, likely has gunboats
+			{
+				if (GetHealth(bot) > 30)
+					result = true;
+			}
+			else if (GetHealth(bot) > 55)
+				result = true;
+			else
+				result = false;
+		}
 	}
-	return false;
+	return result;
 }
 
 stock bool DemoIsDemoknight(int bot)
@@ -4016,7 +4160,8 @@ stock bool CheckTrace(int attacker, int victim)
 {
 	//PrintToChat(attacker, "tracing for target.");
 	if (!IsValidClient(victim))
-		PrintCenterTextAll("Target not a player - Ent: %i", victim);
+		return false;
+		//PrintCenterTextAll("Target not a player - Ent: %i", victim);
 	bool result = false;
 	float startingpos[3], targetpos[3];
 	GetClientEyePosition(attacker, startingpos);
