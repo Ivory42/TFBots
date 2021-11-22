@@ -148,18 +148,6 @@ native int CB_GetBotOffClass(int bot);
 //forward void CB_OnBotResupply(int bot, int index, bool hooked);
 
 /**
- * Forward called when a hooked bot attacks with any weapon
- *
- * @param1 bot - Client Index (MUST BE A FAKECLIENT)
- * @param2 index - Bot Index
- * @param2 hooked - Is this bot manually hooked
- * @param3 weapon - Weapon Definition Index
- * @param4 crit - Is this a critical attack
- */
-
-//forward Action CB_OnBotAttack(int bot, int index, bool hooked, int weapon, bool crit);
-
-/**
  * Forward called when a hooked bot dies
  *
  * @param1 bot - Client Index (MUST BE A FAKECLIENT)
@@ -172,16 +160,6 @@ native int CB_GetBotOffClass(int bot);
 //forward void CB_OnBotDeath(int bot, int index, bool hooked, int attacker, int crit);
 
 /**
- * Forward called when a hooked bot jumps
- *
- * @param1 bot - Client Index (MUST BE A FAKECLIENT)
- * @param2 index - Bot Index
- * @param2 hooked - Is this bot manually hooked
- */
-
-//forward void CB_OnBotJump(int bot, int index, bool hooked);
-
-/**
  * Forward called when a hooked bot blast jumps
  *
  * @param1 bot - Client Index (MUST BE A FAKECLIENT)
@@ -191,19 +169,3 @@ native int CB_GetBotOffClass(int bot);
  */
 
 //forward void CB_OnBotBlastJump(int bot, int index, bool hooked, int weapon);
-
-/**
- * Forward called when a hooked bot takes damage
- *
- * @param1 bot - Client Index (MUST BE A FAKECLIENT)
- * @param2 index - Bot Index
- * @param2 hooked - Is this bot manually hooked
- * @param3 damage - Damage dealt to bot
- * @param4 crit - Was this damage critical
- * @param5 attacker - Index of attacker
- * @param6 inflictor - Index of inflictor
- *
- * @return - damage will be set to return value
- */
-
-//forward Action CB_OnBotTakeDamage(int bot, int index, bool hooked, float damage, bool crit, int attacker, int inflictor);
