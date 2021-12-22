@@ -209,3 +209,29 @@ native int CB_GetBotOffClass(int bot);
  */
 
 //forward void CB_OnBotBlastJump(int bot, int index, bool hooked, int weapon);
+
+/************************************************************
+
+STOCKS
+
+************************************************************/
+
+stock void GetConfigName(int index, char[] config, int size)
+{
+	KeyValues kv = new KeyValues("BotIndexes");
+	
+	char sPath[PLATFORM_MAX_PATH];
+	BuildPath(SM_Path, sPath, sizeof sPath, "configs/botindexes.txt");
+	kv.ImportFromFile(sPath);
+
+	char sBotIndex[8];
+	IntToString(index, sBotIndex, sizeof sBotIndex);
+	if (!kv.JumpToKey(sBotIndex))
+	{
+		//PrintToChatAll("Could not find bot index: %i", index);
+		delete kv;
+		return;
+	}
+	kv.GetString(sBotIndex, config, size);
+	delete kv;
+}
