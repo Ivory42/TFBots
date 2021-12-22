@@ -1,7 +1,6 @@
 //Currently rewriting with better syntax
 //Future versions will be a bit easier to follow
 
-#include <sourcemod>
 #include <sdktools>
 #include <sdkhooks>
 #include <tf2>
@@ -10,7 +9,7 @@
 #include <tf2items>
 #include <custombots>
 
-#define PLUGIN_VERSION  "1.0"
+#define PLUGIN_VERSION  "1.3"
 #define FAR_FUTURE 999999.0
 #define MAXTEAMS	4
 
@@ -47,8 +46,6 @@ int iForcedIndex = 0;
 
 float ZeroVec[3] = {0.0, 0.0, 0.0};
 
-//Should probably make all these variable groups into structs...
-
 //Map Navigation Vars
 float RJPos[MAXRJPOS][3];									// Rocket Jump node Position
 float RJAngles[MAXRJPOS][3];								// Rocket Jump node Angles
@@ -79,38 +76,21 @@ bool NavPositionSelected[MAXPLAYERS+1] = false;
 bool NavAngleSelected[MAXPLAYERS+1] = false;
 
 
-//Bot Specific vars
-float Inaccuracy[MAXPLAYERS+1];
-float AimDelay[MAXPLAYERS+1];
-float AimDelayAdd[MAXPLAYERS+1];
-float AimFOV[MAXPLAYERS+1];
-float AggroTime[MAXPLAYERS+1];
-float AggroDelay[MAXPLAYERS+1];
-float AttackRange[MAXPLAYERS+1];
-float flSniperAimTime[MAXPLAYERS+1];
-float flHealthThreshold[MAXPLAYERS+1];
-float flHeightThreshold[MAXPLAYERS+1];
-float NoiseMakerDelay[MAXPLAYERS+1];
-float NoiseMakerDelayAdd[MAXPLAYERS+1];
-float BotHeadshotConfidence[MAXPLAYERS+1];
-float BotRocketConfidence[MAXPLAYERS+1];
-float BotPressureDist[MAXPLAYERS+1];
-int BotIndex[MAXPLAYERS+1];
-int BotAggroTarget[MAXPLAYERS+1];
-int iClassPriority[MAXPLAYERS+1];
-int iBotClass[MAXPLAYERS+1];
-int iBotOffClass[MAXPLAYERS+1];
-int DamageTaken[MAXPLAYERS+1];
-int iAntiAim[MAXPLAYERS+1];
-int NoiseMaker[MAXPLAYERS+1];
-bool bFleeing[MAXPLAYERS+1];
-bool PreferJump[MAXPLAYERS+1];
-bool bIsAttacking[MAXPLAYERS+1];
-bool bPreferMelee[MAXPLAYERS+1];
-bool bAimGround[MAXPLAYERS+1];
-char sBotName[MAXPLAYERS+1][MAX_NAME_LENGTH];
+//Bot properties
+BotProperties Properties[MAXPLAYERS+1];
+SniperProperties Sniper[MAXPLAYERS+1];
+SoldierProperties Soldier[MAXPLAYERS+1];
 
-//Bot vars
+float AimDelay[MAXPLAYERS+1];
+//float NoiseMakerDelay[MAXPLAYERS+1];
+//float NoiseMakerDelayAdd[MAXPLAYERS+1];
+int BotIndex[MAXPLAYERS+1];
+int DamageTaken[MAXPLAYERS+1];
+//int iAntiAim[MAXPLAYERS+1];
+//int NoiseMaker[MAXPLAYERS+1];
+bool bIsAttacking[MAXPLAYERS+1];
+
+//Bot gameplay variables
 int shield[MAXPLAYERS+1];
 int iObstructions[MAXPLAYERS+1];
 int iPreservedAmmoP[MAXPLAYERS+1];
@@ -146,7 +126,6 @@ bool IndexTaken[MAXBOTS+1];
 char sBotDisconnectMessage[128]; //Message to use for bot disconnect
 
 //Forwards
-
 GlobalForward g_BotResupply;
 GlobalForward g_BotDeath;
 GlobalForward g_BotRocketJump;
@@ -185,11 +164,11 @@ public void OnPluginStart()
 	RegAdminCmd("sm_reloadnodes", CMDReloadNodes, ADMFLAG_ROOT);
 
 	//Convars
-	g_SpawnBots = CreateConVar("tf_bot_allow_join", "0", "Can TFBots randomly join and leave the server");
+	g_SpawnBots = CreateConVar("tf_bot_allow_join", "1", "Can TFBots randomly join and leave the server");
 	g_BotQuota = FindConVar("tf_bot_quota");
 	gravscale = FindConVar("sv_gravity");
 
-	//Forwards.. some of these are a bit useless, will probably rework forwards at a future date
+	//Forwards
 	g_BotResupply = new GlobalForward("CB_OnBotResupply", ET_Ignore, Param_Cell, Param_Cell, Param_Cell);
 	g_BotDeath = new GlobalForward("CB_OnBotDeath", ET_Ignore, Param_Cell, Param_Cell, Param_Cell, Param_Cell, Param_Cell);
 	g_BotRocketJump = new GlobalForward("CB_OnBotBlastJump", ET_Ignore, Param_Cell, Param_Cell, Param_Cell, Param_Cell);
@@ -299,7 +278,7 @@ public int Native_GetBotClass(Handle plugin, int args)
 	int bot = GetNativeCell(1);
 	if (IsCustomBot(bot))
 	{
-		return iBotClass[bot];
+		return Properties[bot].class;
 	}
 	return 0;
 }
@@ -309,7 +288,7 @@ public int Native_GetBotOffClass(Handle plugin, int args)
 	int bot = GetNativeCell(1);
 	if (IsCustomBot(bot))
 	{
-		return iBotOffClass[bot];
+		return Properties[bot].offclass;
 	}
 	return 0;
 }
@@ -335,14 +314,14 @@ public int Native_SetParamFloat(Handle plugin, int args)
 	{
 		switch (param)
 		{
-			case CBParam_Aggro: AggroDelay[bot] = value;
+			case CBParam_Aggro: Properties[bot].aggroTime = value;
 			case CBParam_AimDelay: AimDelayAdd[bot] = value;
-			case CBParam_Range: AttackRange[bot] = value;
-			case CBParam_FOV: AimFOV[bot] = value;
-			case CBParam_Inaccuracy: Inaccuracy[bot] = value;
-			case CBParam_SniperAimTime: flSniperAimTime[bot] = value;
-			case CBParam_SoldierGroundHeight: flHealthThreshold[bot] = value;
-			case CBParam_HPRatio: flHealthThreshold[bot] = value;
+			case CBParam_Range: Properties[bot].range = value;
+			case CBParam_FOV: Properties[bot].fov = value;
+			case CBParam_Inaccuracy: Properties[bot].inaccuracy = value;
+			case CBParam_SniperAimTime: Sniper[bot].aimTime = value;
+			case CBParam_SoldierGroundHeight: Soldier[bot].heightThreshold = value;
+			case CBParam_HPRatio: Properties[bot].healthThreshold = value;
 			default: LogMessage("Tried to set a non-float parameter with CB_SetBotParameterFloat, please use a different parameter type!");
 		}
 	}
@@ -360,10 +339,10 @@ public int Native_SetParamInt(Handle plugin, int args)
 	{
 		switch (param)
 		{
-			case CBParam_Class: iBotClass[bot] = value;
-			case CBParam_OffClass: iBotOffClass[bot] = value;
-			case CBParam_AA: iAntiAim[bot] = value;
-			case CBParam_ClassPriority: iClassPriority[bot] = value;
+			case CBParam_Class: Properties[bot].class = value;
+			case CBParam_OffClass: Properties[bot].offclass = value;
+			//case CBParam_AA: iAntiAim[bot] = value;
+			case CBParam_ClassPriority: Properties[bot].classPriority = value;
 			default: LogMessage("Tried to set a non-integer parameter with CB_SetBotParameterInt, please use a different parameter type!");
 		}
 	}
@@ -381,8 +360,8 @@ public int Native_SetParamBool(Handle plugin, int args)
 	{
 		switch (param)
 		{
-			case CBParam_PreferJump: PreferJump[bot] = value;
-			case CBParam_SoldierAimGround: bAimGround[bot] = value;
+			case CBParam_PreferJump: Properties[bot].preferJump = value;
+			case CBParam_SoldierAimGround: Soldier[bot].aimGround = value;
 			default: LogMessage("Tried to set a non-boolean parameter with CB_SetBotParameterBool, please use a different parameter type!");
 		}
 	}
@@ -1178,8 +1157,11 @@ stock bool CanProceedMenu(int client, CBNavType NavType)
 	return false;
 }
 
+/***************************
 
+Bot Join Functions
 
+***************************/
 
 public Action OnPlayerJoinTeam(Handle event, const char[] name, bool dontBroadcast)
 {
@@ -1268,7 +1250,7 @@ public bool FindControlPoints()
 public Action CMDSpawnBot(int client, int args)
 {
 	char sCommand[8];
-	GetCmdArg(1, sCommand, sizeof sCommand);
+	GetCmdArg(1, sCommand, sizeof JoiningBot);
 	iForcedIndex = StringToInt(sCommand);
 	ShouldBotHook = true;
 	ServerCommand("tf_bot_add 1");
@@ -1353,9 +1335,9 @@ public Action BotSetMaxHealth(int bot, int &maxHealth)
 {
 	if (IsCustomBot(bot))
 	{
-		if (BotHealthOverride[bot] > 0)
+		if (Properties[bot].healthOverride > 0)
 		{
-			maxHealth = BotHealthOverride[bot];
+			maxHealth = Properties[bot].healthOverride;
 			return Plugin_Changed;
 		}
 	}
@@ -1368,10 +1350,13 @@ public Action SetBotVars(Handle bTimer, int bot)
 	{
 		if (BotIndex[bot] > 0)
 		{
-			KeyValues kv = new KeyValues("BotIndexes");
+			KeyValues kv = new KeyValues("Bot");
 
+			char config[64];
+			GetConfigName(BotIndex[bot], config, sizeof config);
+			Properties[bot].SetConfig(config);
 			char sPath[PLATFORM_MAX_PATH];
-			BuildPath(Path_SM, sPath, sizeof sPath, "configs/botindexes.txt");
+			BuildPath(Path_SM, sPath, sizeof sPath, "configs/bots/%s.cfg", config);
 			kv.ImportFromFile(sPath);
 
 			char sBotIndex[8];
@@ -1384,32 +1369,29 @@ public Action SetBotVars(Handle bTimer, int bot)
 				return;
 			}
 
-			kv.GetString("name", sBotName[bot], MAX_NAME_LENGTH);
-			SetClientInfo(bot, "name", sBotName[bot]);
-			PrintToChatAll("%s has joined the game", sBotName[bot]);
-			PrintToChatAll("%s was automatically assigned to team %s", sBotName[bot], (GetClientTeam(bot) == 2) ? "RED" : "BLU");
+			kv.GetString("name", Properties[bot].name, MAX_NAME_LENGTH);
+			SetClientInfo(bot, "name", Properties[bot].name);
+			PrintToChatAll("%s has joined the game", Properties[bot].name);
+			PrintToChatAll("%s was automatically assigned to team %s", Properties[bot].name, (GetClientTeam(bot) == 2) ? "RED" : "BLU");
 
 			//Set bot behavior
 			AimDelayAdd[bot] = kv.GetFloat("aimdelay", 0.0); //Cooldown on autoaim usage
-			AimFOV[bot] = kv.GetFloat("aimfov", 90.0); //FoV for target acquisition
-			Inaccuracy[bot] = kv.GetFloat("inaccuracy", 25.0); //deviation to add onto autoaim
-			BotHeadshotConfidence[bot] = ClampFloat(kv.GetFloat("confidence_hs", 10.0), 1.0); //Confidence for bots to keep steady aim at closer range
-			BotRocketConfidence[bot] = kv.GetFloat("confidence_rj", 50.0); //Confidence for bots to choose whether or not they use a rocket jump node
+			Properties[bot].fov = kv.GetFloat("aimfov", 90.0); //FoV for target acquisition
+			Properties[bot].inaccuracy = kv.GetFloat("inaccuracy", 25.0); //deviation to add onto autoaim
+			Sniper[bot].confidence = ClampFloat(kv.GetFloat("confidence_hs", 10.0), 1.0); //Confidence for bots to keep steady aim at closer range
+			Soldier[bot].confidence = kv.GetFloat("confidence_rj", 50.0); //Confidence for bots to choose whether or not they use a rocket jump node
 
-			AggroDelay[bot] = kv.GetFloat("aggrotime", 0.0); //How long a target is aggro'd for
-			iClassPriority[bot] = kv.GetNum("prioritize"); //Class priority
-			AttackRange[bot] = kv.GetFloat("range", 800.0); //Preferred combat range
+			Properties[bot].aggroTime = kv.GetFloat("aggrotime", 0.0); //How long a target is aggro'd for
+			Properties[bot].classPriority = kv.GetNum("prioritize"); //Class priority
+			Properties[bot].range = kv.GetFloat("range", 800.0); //Preferred combat range
 
-			flSniperAimTime[bot] = kv.GetFloat("aimtime", 1.0); //Steady rate for snipers
-			flHealthThreshold[bot] = kv.GetFloat("health_threshold", 0.2); //Health threshold for when bots will try to flee
-			BotPressureDist[bot] = kv.GetFloat("pressure_distance", 400.0); //How close a target has to be before bots begin to get nervous aim
+			Sniper[bot].aimTime = kv.GetFloat("aimtime", 1.0); //Steady rate for snipers
+			Properties[bot].healthThreshold = kv.GetFloat("health_threshold", 0.2); //Health threshold for when bots will try to flee
+			Sniper[bot].pressureDist = kv.GetFloat("pressure_distance", 400.0); //How close a target has to be before sniper bots begin to get nervous aim
 
-			flHeightThreshold[bot] = kv.GetFloat("height", 0.0); //Soldier height threshold
-
-			if (kv.GetNum("preferjump") == 1)
-				PreferJump[bot] = true;
-			else
-				PreferJump[bot] = false;
+			Soldier[bot].heightThreshold = kv.GetFloat("height", 0.0); //Soldier height threshold
+			
+			Properties[bot].preferJump = view_as<bool>(kv.GetNum("preferjump"));
 
 			delete kv;
 			return;
@@ -1492,19 +1474,11 @@ public void ClearBotVars(int client)
 {
 	if (IsFakeClient(client))
 	{
-		Inaccuracy[client] = 0.0;
-		AggroTime[client] = 0.0;
+		Properties[client].Clear();
+		Sniper[client].Clear();
+		Soldier[client].Clear();
 		AggroDelay[client] = 0.0;
-		AimFOV[client] = 0.0;
-		AimDelay[client] = 0.0;
 		AimDelayAdd[client] = 0.0;
-		iClassPriority[client] = 1;
-		iAntiAim[client] = 0;
-		PreferJump[client] = false;
-		bFleeing[client] = false;
-		flSniperAimTime[client] = 1.0;
-		flHealthThreshold[client] = 0.2;
-		NoiseMaker[client] = 0;
 	}
 }
 
@@ -1562,7 +1536,7 @@ public Action PlayerResupply(Handle EventH, const char[] name, bool dontBroadcas
 		if (BotIndex[bot] > 0)
 			SetupLoadout(bot, class);
 		else if (bIsHookedBot[bot])
-			SetBotClass(bot, iBotClass[bot], iBotOffClass[bot]);
+			SetBotClass(bot, Properties[bot]);
 
 		//Call Resupply Forward
 		Call_StartForward(g_BotResupply);
@@ -1578,7 +1552,7 @@ public Action PlayerResupply(Handle EventH, const char[] name, bool dontBroadcas
 
 public Action CMDSetHP(int client, int args)
 {
-	new String:arg1[32];
+	char arg1[32];
 	GetCmdArg(1, arg1, sizeof(arg1));
 	char target_name[MAX_TARGET_LENGTH];
 	int target_list[MAXPLAYERS];
@@ -1620,15 +1594,16 @@ public Action CMDSetHP(int client, int args)
 	return Plugin_Handled;
 }
 
-public int SetBotClass(int bot, int class, int offclass)
+public int SetBotClass(int bot, BotProperties Bot)
 {
+	int class = Bot.class;
 	if (GetRandomInt(1, 100) <= 35)
-		class = offclass;
+		class = Bot.offclass;
 
-	if (class == 5) //Medics
+	if (Bot.class == 5) //Medics
 	{
 		if (GetPlayersOnTeam(GetClientTeam(bot)) < 3)
-			class = offclass;
+			class = Bot.offclass;
 	}
 
 	SetEntProp(bot, Prop_Send, "m_iDesiredPlayerClass", class);
@@ -1643,14 +1618,11 @@ public void SetupLoadout(int bot, TFClassType class)
 	{
 		if (BotIndex[bot] > 0)
 		{
-			KeyValues kv = new KeyValues("BotIndexes");
+			KeyValues kv = new KeyValues("Bot");
 
 			char sPath[PLATFORM_MAX_PATH];
-			BuildPath(Path_SM, sPath, sizeof sPath, "configs/botindexes.txt");
+			BuildPath(Path_SM, sPath, sizeof sPath, "configs/bots/%s.cfg", Properties[bot].config);
 			kv.ImportFromFile(sPath);
-
-			char sBotIndex[8];
-			IntToString(BotIndex[bot], sBotIndex, sizeof sBotIndex);
 
 			char pWeaponName[64]; //Primary classname
 			char sWeaponName[64]; //Secondary classname
@@ -1680,48 +1652,31 @@ public void SetupLoadout(int bot, TFClassType class)
 			//Cosmetic2 attribs
 			int cEffect2, cPaint2R, cPaint2B;
 
-
-			if (!kv.JumpToKey(sBotIndex))
+			Properties[bot].healthOverride = kv.GetNum("override_health", 0);
+			if (Properties[bot].healthOverride > 0)
 			{
-				//PrintToChatAll("Could not find bot index: %i", BotIndex[bot]);
-				delete kv;
-				return;
-			}
-
-			BotHealthOverride[bot] = kv.GetNum("override_health", 0);
-			if (BotHealthOverride[bot] > 0)
-			{
-				SetEntityHealth(bot, BotHealthOverride[bot]);
+				SetEntityHealth(bot, Properties[bot].healthOverride);
 			}
 
 			// Do we prefer melee
-			bPreferMelee[bot] = view_as<bool>(kv.GetNum("melee"));
+			Properties[bot].preferMelee = view_as<bool>(kv.GetNum("melee"));
 
 			// Do we prefer to shoot ground positions
-			if (kv.GetNum("aimground") == 1)
-				bAimGround[bot] = true;
-			else
-				bAimGround[bot] = false;
+			Soldier[bot].aimGround = view_as<bool>(kv.GetNum("aimground"));
 
-			iBotClass[bot] = kv.GetNum("class");
-			iBotOffClass[bot] = kv.GetNum("offclass");
+			Properties[bot].class = kv.GetNum("class");
+			Properties[bot].offclass = kv.GetNum("offclass");
 
-			int SelectedClass = SetBotClass(bot, iBotClass[bot], iBotOffClass[bot]);
+			int SelectedClass = SetBotClass(bot, Properties[bot]);
 
 			GetLiteralClassName(SelectedClass, sClassName, sizeof sClassName);
 
 			if (StrEqual(sClassName, "sniper"))
-				AttackRange[bot] *= 50.0;
+				Properties[bot].range *= 50.0;
 			else
-				AttackRange[bot] = GetBotAttackRange(bot);
+				Properties[bot].range = GetBotAttackRange(bot);
 
-			iAntiAim[bot] = kv.GetNum("antiaim", 0);
-
-			if (kv.GetNum("noisemaker") > 0)
-			{
-				NoiseMaker[bot] = kv.GetNum("noisemaker");
-				NoiseMakerDelayAdd[bot] = kv.GetFloat("noisemaker_delay", 1.0);
-			}
+			//iAntiAim[bot] = kv.GetNum("antiaim", 0);
 
 			//Select proper class loadout
 			if (kv.JumpToKey(sClassName))
