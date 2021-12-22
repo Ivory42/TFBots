@@ -8,6 +8,46 @@
 #define MAXFALLBACK 8
 #define MAXENGIEPOS 24
 
+enum Struct BotProperties
+{
+	char botName[MAX_NAME_LENGTH];
+	
+	//aim
+	float inaccuracy;
+	float autoAimDelay;
+	float fov; //target acquisition
+	float aggroTime;
+	float aggroDelay;
+	float range;
+	
+	//combat
+	float healthThreshold; //flee when under this health ratio
+	int damageTaken;
+	bool fleeing;
+	bool preferJump; //jump when in combat
+	bool preferMelee; //melee classes
+	
+	//target
+	int target;
+	int classPriority;
+	
+	//class
+	int class;
+	int offclasses[9];
+}
+enum Struct SniperProperties
+{
+	float aimTime;
+	float confidence;
+	float pressureDist;
+}
+enum Struct SoldierProperties
+{
+	float heightTreshold;
+	float confidence;
+	bool aimGround; //shoot under airborn targets
+}
+
 enum CBNavType
 {
 	CBNavType_SniperPos = 0,
