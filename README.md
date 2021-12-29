@@ -86,6 +86,7 @@ Check `scripting/include/custombots.inc` for a more detailed explanation of each
 - `CB_OnBotResupply` - Called when a hooked bot is resupplied
 - `CB_OnBotDeath` - Called when a hooked bot is killed
 - `CB_OnBotBlastJump` - Called when a hooked bot attempts to blast jump
+- `CB_OnBotAdded` - Called when a bot joins with a predefined logic plugin - used for determining parameters in sub-plugins
 
 ## KNOWN ISSUES
 - Giving bots inaccuracy makes them significantly less accurate than they should be
