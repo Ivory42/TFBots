@@ -1391,7 +1391,7 @@ public Action SetBotVars(Handle timer, int bot)
 			Call_PushString(plugin);
 
 			Call_Finish();
-			PrintToChatAll("Called bot spawn with plugin %s", plugin);
+			//PrintToChatAll("Called bot spawn with plugin %s", plugin);
 
 			return;
 		}
@@ -1645,7 +1645,7 @@ public void SetupLoadout(int bot, TFClassType class)
 			if (HealthOverride[bot] > 0)
 			{
 				SetEntityHealth(bot, HealthOverride[bot]);
-				PrintToChatAll("Set health override to: %i", HealthOverride[bot]);
+				//PrintToChatAll("Set health override to: %i", HealthOverride[bot]);
 			}
 
 			Class[bot] = kv.GetNum("class");
@@ -2956,7 +2956,7 @@ public Action OnPlayerRunCmd(int bot, int &buttons, int &impulse, float vel[3], 
 							else if (HeadShotDelay[bot] <= GetEngineTime() && TF2_IsPlayerInCondition(bot, TFCond_Slowed))
 							{
 								buttons |= IN_ATTACK;
-								PrintToChatAll("fire");
+								//PrintToChatAll("fire");
 							}
 						}
 
@@ -3362,7 +3362,7 @@ public void TF2_OnConditionAdded(int client, TFCond condition)
 			delay += (GetRandomFloat(-0.25, 0.85)); //add some variance for more natural aim
 			ClampFloat(delay, 0.225); //Clamp delay
 			HeadShotDelay[client] = GetEngineTime() + delay;
-			PrintToChatAll("delay by %.1f", delay);
+			//PrintToChatAll("delay by %.1f", delay);
 		}
 	}
 }
