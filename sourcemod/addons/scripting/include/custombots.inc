@@ -8,46 +8,6 @@
 #define MAXFALLBACK 8
 #define MAXENGIEPOS 24
 
-enum Struct BotProperties
-{
-	char botName[MAX_NAME_LENGTH];
-	
-	//aim
-	float inaccuracy;
-	float autoAimDelay;
-	float fov; //target acquisition
-	float aggroTime;
-	float aggroDelay;
-	float range;
-	
-	//combat
-	float healthThreshold; //flee when under this health ratio
-	int damageTaken;
-	bool fleeing;
-	bool preferJump; //jump when in combat
-	bool preferMelee; //melee classes
-	
-	//target
-	int target;
-	int classPriority;
-	
-	//class
-	int class;
-	int offclasses[9];
-}
-enum Struct SniperProperties
-{
-	float aimTime;
-	float confidence;
-	float pressureDist;
-}
-enum Struct SoldierProperties
-{
-	float heightTreshold;
-	float confidence;
-	bool aimGround; //shoot under airborn targets
-}
-
 enum CBNavType
 {
 	CBNavType_SniperPos = 0,
@@ -182,56 +142,40 @@ native int CB_GetBotOffClass(int bot);
  *
  * @param1 bot - Client Index (MUST BE A FAKECLIENT)
  * @param2 index - Bot Index
- * @param2 hooked - Is this bot manually hooked
+ * @param3 hooked - Is this bot manually hooked
  */
 
-//forward void CB_OnBotResupply(int bot, int index, bool hooked);
+forward void CB_OnBotResupply(int bot, int index, bool hooked);
 
 /**
  * Forward called when a hooked bot dies
  *
  * @param1 bot - Client Index (MUST BE A FAKECLIENT)
  * @param2 index - Bot Index
- * @param2 hooked - Is this bot manually hooked
- * @param3 attacker - Index of attacker
- * @param4 crit - Crit type of kill
+ * @param3 hooked - Is this bot manually hooked
+ * @param4 attacker - Index of attacker
+ * @param5 crit - Crit type of kill
  */
 
-//forward void CB_OnBotDeath(int bot, int index, bool hooked, int attacker, int crit);
+forward void CB_OnBotDeath(int bot, int index, bool hooked, int attacker, int crit);
 
 /**
  * Forward called when a hooked bot blast jumps
  *
  * @param1 bot - Client Index (MUST BE A FAKECLIENT)
  * @param2 index - Bot Index
- * @param2 hooked - Is this bot manually hooked
- * @param3 weapon - Weapon Definition index being used
+ * @param3 hooked - Is this bot manually hooked
+ * @param4 weapon - Weapon Definition index being used
  */
 
-//forward void CB_OnBotBlastJump(int bot, int index, bool hooked, int weapon);
+forward void CB_OnBotBlastJump(int bot, int index, bool hooked, int weapon);
 
-/************************************************************
+/**
+ * Forward called when a hooked bot joins the game
+ *
+ * @param1 bot - Client Index (MUST BE A FAKECLIENT)
+ * @param2 index - Bot Index
+ * @param3 plugin - plugin associated with the bot (INVALID_PLUGIN if no plugin specified)
+ */
 
-STOCKS
-
-************************************************************/
-
-stock void GetConfigName(int index, char[] config, int size)
-{
-	KeyValues kv = new KeyValues("BotIndexes");
-	
-	char sPath[PLATFORM_MAX_PATH];
-	BuildPath(SM_Path, sPath, sizeof sPath, "configs/botindexes.txt");
-	kv.ImportFromFile(sPath);
-
-	char sBotIndex[8];
-	IntToString(index, sBotIndex, sizeof sBotIndex);
-	if (!kv.JumpToKey(sBotIndex))
-	{
-		//PrintToChatAll("Could not find bot index: %i", index);
-		delete kv;
-		return;
-	}
-	kv.GetString(sBotIndex, config, size);
-	delete kv;
-}
+forward void CB_OnBotAdded(int bot, int index, const char[] plugin);
