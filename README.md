@@ -22,6 +22,7 @@ This is by no means perfect but the bots are able to behave a lot more like play
  
  - Configurable, individual bots
     - Define your own bots in `configs/botindexes.txt` (example bot provided!)
+    - Define custom logic in sub-plugins to extend specific bot behaviors.
     - Up to 56 individual bots supported.
         - Can add as many presets as you want, but any indexes above 56 must be spawned manually or through other plugins
         
@@ -86,10 +87,13 @@ Check `scripting/include/custombots.inc` for a more detailed explanation of each
 - `CB_OnBotDeath` - Called when a hooked bot is killed
 - `CB_OnBotBlastJump` - Called when a hooked bot attempts to blast jump
 
+## KNOWN ISSUES
+- Giving bots inaccuracy makes them significantly less accurate than they should be
+- Sniper bots don't always respect their steady rate parameters
+- Sniper bots will sometimes shoot targets they should not be able to see
 
 ## FUTURE PLANS
 
-- Several of the forwards are rather unnecessary so they may be removed sometime in the future
 - Give rocket jump nodes difficulty ratings so soldier bots can have different rocket jump skill values
 - Allow Demoman bots to sticky jump
 - Give scouts a bit of a better system for jumping (allow them to detect incoming projectiles and properly dodge in time)
