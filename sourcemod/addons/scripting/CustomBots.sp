@@ -9,7 +9,7 @@
 #include <tf2items>
 #include <custombots>
 
-#define PLUGIN_VERSION  "1.3"
+#define PLUGIN_VERSION  "1.4.0"
 #define FAR_FUTURE 999999.0
 #define MAXTEAMS	4
 
@@ -257,10 +257,12 @@ public int Native_SpawnBotByIndex(Handle plugin, int args)
 	int team = GetNativeCell(2);
 	iForcedIndex = botid;
 	//PrintToChatAll("bot ID: %i", iForcedIndex);
-	char text[64];
-	Format(text, sizeof text, "tf_bot_add 1 scout %s expert", team == 2 ? "red" : "blue");
+	//char text[64];
+	//Format(text, sizeof text, "tf_bot_add 1 scout %s expert", team == 2 ? "red" : "blue");
 	ShouldBotHook = true;
-	ServerCommand(text);
+	int bot = CreateFakeClient("custom_bot"); //temporary name, will be changed after bot is properly setup
+	return bot;
+	//ServerCommand(text);
 }
 
 public int Native_GetBotClass(Handle plugin, int args)
@@ -2293,7 +2295,36 @@ public Action TF2_CalcIsAttackCritical(int bot, int weapon, char[] weaponname, b
 			}
 		}
 	}
+	else if (!IsFakeClient(bot) && IsValidClient(bot))
+	{
+		int player = bot;
+		bool headshot = PlayerAimBool(player, 1);
+		bool proj = PlayerAimBool(player, 2);
+		float eyeAng[3];
+		GetClientEyeAngles(player, eyeAng);
+		Player[player].SetOld(eyeAng);
+		SetPlayerViewAngles(player, headshot, proj);
+		RequestFrame(ResetAngles, player);
+	}
 	return Plugin_Continue;
+}
+
+void PlayerAimBool(int client, int type)
+{
+	switch (type)
+	{
+		
+	}
+}
+
+void ResetAngles(int client)
+{
+	if (IsValidClient(client))
+	{
+		float angle[3];
+		Player[player].GetOld(angle);
+		TeleportEntity(client, NULL_VECTOR, angle, NULL_VECTOR);
+	}
 }
 
 /***********************************************************************************************************
@@ -2610,24 +2641,41 @@ stock bool ShouldFallBack(int bot)
 	return false;
 }
 
+void ToggleDebugAim(int client, Client player)
+{
+	player.toggled = !player.toggled;
+	if (player.toggled) //disable lag compensation so we can properly "lead" the target
+	{
+		SetEntProp(bot, Prop_Data, "m_bLagCompensation", false);
+		SetEntProp(bot, Prop_Data, "m_bPredictWeapons", false);
+	}
+	else
+	{
+		SetEntProp(bot, Prop_Data, "m_bLagCompensation", true);
+		SetEntProp(bot, Prop_Data, "m_bPredictWeapons", true);
+	}
+}
+
 public Action OnPlayerRunCmd(int bot, int &buttons, int &impulse, float vel[3], float angles[3], int &weapon, int &subtype, int &cmdnum, int &tickcount, int &seed, int mouse[2])
 {
 	if(IsValidClient(bot))
 	{
-		if (!IsFakeClient(bot) && GetConVarBool(g_playerBot)) //player debug
+		if (!IsFakeClient(bot) && g_playerBot.BoolValue) //player debug
 		{
-			if (buttons & IN_RELOAD) //TODO - move this to TF2_CalcIsAttackCritical and check why variance is so volatile
+			int player = bot;
+			Player[player].togglePress = (buttons & IN_RELOAD) != 0;
+			if (!Player[player].togglePress && Player[player].toggle) //Allow player to use bot aim for debugging
 			{
-				SetEntProp(bot, Prop_Data, "m_bLagCompensation", false);
-				SetEntProp(bot, Prop_Data, "m_bPredictWeapons", false);
-				float vAngle2[3];
-				GetClientEyeAngles(bot, vAngle2);
-				SetPlayerViewAngles(bot, vAngle2, true);
+				Player[player].toggle = false;
 			}
-			else
+			if (Player[player].togglePress)
 			{
-				SetEntProp(bot, Prop_Data, "m_bLagCompensation", true);
-				SetEntProp(bot, Prop_Data, "m_bPredictWeapons", true);
+				if (!Player[player].toggle)
+				{
+					ToggleDebugAim(player);
+					Player[player].toggle = true;
+					
+				}
 			}
 		}
 		float oldAngle[3];
@@ -3567,7 +3615,7 @@ stock void SetTargetViewAngles(int bot, bool head = false, bool proj = false, bo
 	}
 	else if (!head && Inaccuracy[bot]) //otherwise, if our bot has innacuracy and doesn't aim for the head, add a bit of variance to cover the hitbox area
 	{
-		aimpos[2] += GetRandomFloat(10.0, 60.0);
+		aimpos[2] += GetRandomFloat(-20.0, 20.0);
 		aimpos[1] += GetRandomFloat(-20.0, 20.0);
 	}
 
@@ -3626,6 +3674,7 @@ stock void SetPlayerViewAngles(int client, float angle[3], bool head = false, bo
 	AimFOV[client] = 180.0;
 	Range[client] = 9999.0;
 	int target = SelectBestTarget(client, angle);
+	float inaccuracy = PlayerInaccuracy.IntValue;
 
 	//Make sure target is visible and within bot's aim FOV
 	if (!CheckTrace(client, target)) return;
@@ -3667,10 +3716,15 @@ stock void SetPlayerViewAngles(int client, float angle[3], bool head = false, bo
 	GetVectorAngles(aimvec, aimangle);
 	aimangle[0] *= -1.0;
 	aimangle[1] += 180.0;
+	
+	if (inaccuracy)
+	{
+		aimangle[0] += GetRandomFloat(inaccuracy * -1.0, inaccuracy);
+		aimangle[1] += GetRandomFloat(inaccuracy * -1.0, inaccuracy);
+	}
 
 	//clamp angles to prevent janking
 	ClampAngle(aimangle);
-	//SnapEyeAngles(bot, aimpos);
 	TeleportEntity(client, NULL_VECTOR, aimangle, NULL_VECTOR);
 }
 
