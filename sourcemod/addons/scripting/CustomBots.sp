@@ -20,11 +20,28 @@ int g_iOffsetStudioHdr;
 
 Handle g_hGetBonePosition;
 Handle g_hWearableEquip;
-Handle g_BotQuota;
-Handle g_SpawnBots;
-Handle gravscale;
 Handle g_EquipWearable;
 bool g_bSdkStarted;
+
+enum struct Client
+{
+	bool toggle;
+	bool toggled;
+	bool togglePress;
+	float oldAngles[3];
+	void SetOld(float angle[3])
+	{
+		for (int i = 0; i < 3; i++)
+			this.oldAngles[i] = angle[i];
+	}
+	void GetOld(float newAngle[3])
+	{
+		for (int i = 0; i < 3; i++)
+			newAngle[i] = this.oldAngles[i];
+	}
+}
+
+Client Player[MAXPLAYERS+1];
 
 float JumpTimer[MAXPLAYERS+1] = FAR_FUTURE;
 float DoubleJumpTimer[MAXPLAYERS+1] = FAR_FUTURE;
@@ -146,6 +163,10 @@ GlobalForward g_BotRocketJump;
 GlobalForward g_botAdded;
 
 ConVar g_playerBot;
+ConVar g_BotQuota;
+ConVar g_SpawnBots;
+ConVar gravscale;
+ConVar PlayerInaccuracy;
 
 public Plugin myinfo =
 {
@@ -190,7 +211,8 @@ public void OnPluginStart()
 	g_botAdded = new GlobalForward("CB_OnBotAdded", ET_Ignore, Param_Cell, Param_Cell, Param_String);
 
 	//debug for testing bot aim
-	g_playerBot = CreateConVar("tf_bot_allow_player_aim", "0", "Allow players to aim like bots");
+	g_playerBot = CreateConVar("tf_bot_debug_aim", "0", "Allow players to use their reload key to auto aim like bots");
+	PlayerInaccuracy = CreateConVar("tf_bot_player_inaccuracy", "0.0", "Inaccuracy for players to have when debugging aim");
 
 	GenerateDirectories();
 
@@ -2295,26 +2317,55 @@ public Action TF2_CalcIsAttackCritical(int bot, int weapon, char[] weaponname, b
 			}
 		}
 	}
-	else if (!IsFakeClient(bot) && IsValidClient(bot))
+	else if (!IsFakeClient(bot) && IsValidClient(bot) && g_playerBot.BoolValue && Player[bot].toggled)
 	{
 		int player = bot;
-		bool headshot = PlayerAimBool(player, 1);
-		bool proj = PlayerAimBool(player, 2);
+		bool headshot = PlayerAimBool(1, weapon, weaponname);
+		bool proj = PlayerAimBool(2, weapon, weaponname);
 		float eyeAng[3];
 		GetClientEyeAngles(player, eyeAng);
 		Player[player].SetOld(eyeAng);
-		SetPlayerViewAngles(player, headshot, proj);
-		RequestFrame(ResetAngles, player);
+		SetPlayerViewAngles(player, eyeAng, headshot, proj);
+		//RequestFrame(ResetAngles, player);
 	}
 	return Plugin_Continue;
 }
 
-void PlayerAimBool(int client, int type)
+bool PlayerAimBool(int type, int weapon, char[] weaponname)
 {
 	switch (type)
 	{
-		
+		case 1: //headshot weapon
+		{
+			if (StrContains(weaponname, "tf_weapon_sniperrifle") != -1)
+				return true;
+
+			int index = GetEntProp(weapon, Prop_Send, "m_iItemDefinitionIndex");
+			switch (index)
+			{
+				case 61, 1006: return true; //amby
+				default: return false;
+			}
+		}
+		case 2: //projectile weapons
+		{
+			if (StrContains(weaponname, "tf_weapon_rocketlauncher") != -1)
+				return true;
+			if (StrContains(weaponname, "tf_weapon_crossbow") != -1)
+				return true;
+			if (StrContains(weaponname, "tf_weapon_grenadelauncher") != -1)
+				return true;
+			if (StrContains(weaponname, "tf_weapon_cannon") != -1)
+				return true;
+			if (StrContains(weaponname, "tf_weapon_flaregun") != -1)
+				return true;
+			if (StrContains(weaponname, "tf_weapon_compound_bow") != -1)
+				return true;
+
+			return false;
+		}
 	}
+	return false;
 }
 
 void ResetAngles(int client)
@@ -2322,7 +2373,7 @@ void ResetAngles(int client)
 	if (IsValidClient(client))
 	{
 		float angle[3];
-		Player[player].GetOld(angle);
+		Player[client].GetOld(angle);
 		TeleportEntity(client, NULL_VECTOR, angle, NULL_VECTOR);
 	}
 }
@@ -2646,13 +2697,13 @@ void ToggleDebugAim(int client, Client player)
 	player.toggled = !player.toggled;
 	if (player.toggled) //disable lag compensation so we can properly "lead" the target
 	{
-		SetEntProp(bot, Prop_Data, "m_bLagCompensation", false);
-		SetEntProp(bot, Prop_Data, "m_bPredictWeapons", false);
+		SetEntProp(client, Prop_Data, "m_bLagCompensation", false);
+		SetEntProp(client, Prop_Data, "m_bPredictWeapons", false);
 	}
 	else
 	{
-		SetEntProp(bot, Prop_Data, "m_bLagCompensation", true);
-		SetEntProp(bot, Prop_Data, "m_bPredictWeapons", true);
+		SetEntProp(client, Prop_Data, "m_bLagCompensation", true);
+		SetEntProp(client, Prop_Data, "m_bPredictWeapons", true);
 	}
 }
 
@@ -2672,9 +2723,9 @@ public Action OnPlayerRunCmd(int bot, int &buttons, int &impulse, float vel[3], 
 			{
 				if (!Player[player].toggle)
 				{
-					ToggleDebugAim(player);
+					ToggleDebugAim(player, Player[player]);
 					Player[player].toggle = true;
-					
+
 				}
 			}
 		}
@@ -3597,7 +3648,8 @@ stock void SetTargetViewAngles(int bot, bool head = false, bool proj = false, bo
 	}
 	else if (!proj)
 	{
-		GetBestHitBox(bot, target, aimpos, false);
+		GetClientAbsOrigin(target, aimpos);
+		aimpos[2] += 40.0;
 	}
 
 	GetClientEyePosition(bot, botpos);
@@ -3674,7 +3726,7 @@ stock void SetPlayerViewAngles(int client, float angle[3], bool head = false, bo
 	AimFOV[client] = 180.0;
 	Range[client] = 9999.0;
 	int target = SelectBestTarget(client, angle);
-	float inaccuracy = PlayerInaccuracy.IntValue;
+	float inaccuracy = PlayerInaccuracy.FloatValue;
 
 	//Make sure target is visible and within bot's aim FOV
 	if (!CheckTrace(client, target)) return;
@@ -3690,7 +3742,8 @@ stock void SetPlayerViewAngles(int client, float angle[3], bool head = false, bo
 	}
 	else if (!proj)
 	{
-		GetBestHitBox(client, target, aimpos, false);
+		GetClientAbsOrigin(target, aimpos);
+		aimpos[2] += 25.0;
 	}
 
 	GetClientEyePosition(client, botpos);
@@ -3716,7 +3769,7 @@ stock void SetPlayerViewAngles(int client, float angle[3], bool head = false, bo
 	GetVectorAngles(aimvec, aimangle);
 	aimangle[0] *= -1.0;
 	aimangle[1] += 180.0;
-	
+
 	if (inaccuracy)
 	{
 		aimangle[0] += GetRandomFloat(inaccuracy * -1.0, inaccuracy);
@@ -3766,18 +3819,18 @@ stock int GetTargetAim(int bot)
 	return bot;
 }
 
-stock float[] TryPredictPosition(int bot, int target, float TargetLocation[3], float BotPos[3], float ProjSpeed) //Try and aim where a target will be in the future
+void TryPredictPosition(int bot, int target, float TargetLocation[3], float BotPos[3], float ProjSpeed) //Try and aim where a target will be in the future
 {
 	if(!target || !IsValidClient(target)) return;
 	if(target != bot)
 	{
-		float flDistance, flTravelTime, TargetVelocity[3];
+		float flDistance, flTravelTime, TargetVelocity[3], projGrav;
 		GetEntPropVector(target, Prop_Data, "m_vecVelocity", TargetVelocity);
 		flDistance = GetVectorDistance(BotPos, TargetLocation);
 		flTravelTime = flDistance / ProjSpeed;
 
-		float gravity = GetConVarFloat(gravscale) / 100.0;
-		gravity = TargetVelocity[2] > 0.0 ? -gravity : gravity; //This shouldn't work but it for some fucking reason does so I'm leaving it
+		float gravity = -1.0 * (GetConVarFloat(gravscale) / 2.0);
+		float y;
 
 		//Try and predict where the target will be when the projectile hits
 		TargetLocation[0] += TargetVelocity[0] * flTravelTime;
@@ -3793,7 +3846,8 @@ stock float[] TryPredictPosition(int bot, int target, float TargetLocation[3], f
 			}
 			else
 			{
-				TargetLocation[2] += TargetVelocity[2] * flTravelTime + (gravity + Pow(flTravelTime, 2.0)) - 10.0;
+				y = TargetVelocity[2] * flTravelTime + (gravity * Pow(flTravelTime, 2.0));
+				TargetLocation[2] += y;
 
 				//Check if target will hit a surface
 				float target_curpos[3];
@@ -3805,6 +3859,9 @@ stock float[] TryPredictPosition(int bot, int target, float TargetLocation[3], f
 				}
 				CloseHandle(position_trace);
 			}
+			//TE_SetupGlowSprite(TargetLocation, PrecacheModel("materials/sprites/blueglow2.vmt"), flTravelTime, 2.0, 200);
+			//TE_SendToAll();
+			//PrintCenterTextAll("Server Gravity: %.1f\nAdjusted Gravity: %.1f\nTravel Time: %.1f\nVertical Vel: %.1f\nAdd Pos: %.1f", gravscale.FloatValue, gravity, flTravelTime, TargetVelocity[2], y);
 		}
 	}
 }
@@ -4723,4 +4780,10 @@ float[] ExtractVectorFromAddress(Address address)
 	v[1] = view_as<float>(ReadInt(address + Address(0x4)));
 	v[2] = view_as<float>(ReadInt(address + Address(0x8)));
 	return v;
+}
+
+void FormatVector(float vector[3], float formatted[3])
+{
+	for (int i = 0; i < 3; i++)
+		vector[i] = formatted[i];
 }
