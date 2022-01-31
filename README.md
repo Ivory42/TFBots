@@ -89,7 +89,6 @@ Check `scripting/include/custombots.inc` for a more detailed explanation of each
 - `CB_OnBotAdded` - Called when a bot joins with a predefined logic plugin - used for determining parameters in sub-plugins
 
 ## KNOWN ISSUES
-- Giving bots inaccuracy makes them significantly less accurate than they should be
 - Sniper bots don't always respect their steady rate parameters
 - Sniper bots will sometimes shoot targets they should not be able to see
 
