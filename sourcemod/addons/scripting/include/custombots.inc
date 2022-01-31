@@ -47,9 +47,11 @@ enum CBParamType
  *
  * @param1 bot - Bot index
  * @param2 teamnum - Team number to spawn on
+ *
+ * @return client index of bot
  */
 
-native void CB_SpawnBotByIndex(int bot, int teamnum);
+native int CB_SpawnBotByIndex(int bot, int teamnum);
 
 /**
  * Retrieve the bot index of a custom bot
