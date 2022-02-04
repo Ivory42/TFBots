@@ -120,7 +120,7 @@ TFbot Bot[MAXPLAYERS+1];
 enum struct TFBotSniper
 {
 	float headshotDelay;
-	float sniperAimTime;
+	float aimTime;
 	float confidence;
 	float pressureDistance;
 	bool scoped;
@@ -296,6 +296,7 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	CreateNative("CB_SetBotParameterFloat", Native_SetParamFloat);
 	CreateNative("CB_SetBotParameterInt", Native_SetParamInt);
 	CreateNative("CB_SetBotParameterBool", Native_SetParamBool);
+	CreateNative("CB_OverrideParameter", Native_TemporaryOverride);
 	CreateNative("CB_IsCustomBot", Native_CustomBot);
 	CreateNative("CB_GetBotClass", Native_GetBotClass);
 	CreateNative("CB_GetBotOffClass", Native_GetBotOffClass);
@@ -308,6 +309,36 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	NATIVES
 
 *********************************************************************************/
+
+public in Native_TemporaryOverride(Handle plugin, int args)
+{
+	int bot = GetNativeCell(1);
+	float value = GetNativeCell(2);
+	CBParamType param = GetNativeCell(3);
+
+	if (IsCustomBot(bot))
+	{
+		switch (param)
+		{
+			//float vars
+			case CBParam_Aggro: Bot[bot].aggroTime = value;
+			case CBParam_AimDelay: Bot[bot].aimDelayAdd = value;
+			case CBParam_Range: Bot[bot].range = value;
+			case CBParam_FOV: Bot[bot].fov = value;
+			case CBParam_Inaccuracy: Bot[bot].inaccuracy = value;
+			case CBParam_SniperAimTime: Sniper[bot].aimTime = value;
+			case CBParam_SoldierGroundHeight: Soldier[bot].maxHeight = value;
+			case CBParam_HPRatio: Bot[bot].healthThreshold = value;
+			
+			//boolean
+			case CBParam_PreferJump: Bot[bot].preferJump = view_as<bool>(value);
+			case CBParam_SoldierAimGround: Soldier[bot].aimGround = view_as<bool>(value);
+			default: LogError("Invalid parameter passed for override!");
+		}
+	}
+	else
+		LogMessage("Tried to set a parameter on a bot that isn't hooked!");
+}
 
 public int Native_SpawnBotByIndex(Handle plugin, int args)
 {
