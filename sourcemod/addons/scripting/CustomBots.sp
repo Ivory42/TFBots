@@ -1447,27 +1447,30 @@ public Action SetBotVars(Handle timer, int bot)
 			SetClientInfo(bot, "name", name);
 			PrintToChatAll("%s has joined the game", name);
 			PrintToChatAll("%s was automatically assigned to team %s", name, (GetClientTeam(bot) == 2) ? "RED" : "BLU");
+			
+			/*
+				Most of these need to be moved to be obtained on spawn
+			*/
 
 			//Set bot behavior
-			AimDelayAdd[bot] = kv.GetFloat("aimdelay", 0.0); //Cooldown on autoaim usage
-			AimFOV[bot] = kv.GetFloat("aimfov", 90.0); //FoV for target acquisition
-			Inaccuracy[bot] = kv.GetFloat("inaccuracy", 0.0); //deviation to add onto autoaim
-			SniperConfidence[bot] = ClampFloat(kv.GetFloat("confidence_hs", 10.0), 1.0); //Confidence for bots to keep steady aim at closer range
-			SoldierRJConfidence[bot] = kv.GetFloat("confidence_rj", 50.0); //Confidence for bots to choose whether or not they use a rocket jump node
+			Bot[bot].aimDelayAdd = kv.GetFloat("aimdelay", 0.0); //Cooldown on autoaim usage
+			Bot[bot].fov = kv.GetFloat("aimfov", 90.0); //FoV for target acquisition
+			Bot[bot].inaccuracy = kv.GetFloat("inaccuracy", 0.0); //deviation to add onto autoaim
+			Sniper[bot].confidence = ClampFloat(kv.GetFloat("confidence_hs", 10.0), 1.0); //Confidence for bots to keep steady aim at closer range
+			Soldier[bot].confidence = kv.GetFloat("confidence_rj", 50.0); //Confidence for bots to choose whether or not they use a rocket jump node
 
-			AggroTime[bot] = kv.GetFloat("aggrotime", 0.0); //How long a target is aggro'd for
-			ClassPriority[bot] = kv.GetNum("prioritize"); //Class priority
-			Range[bot] = kv.GetFloat("range", 800.0); //Preferred combat range
+			Bot[bot].aggroTime = kv.GetFloat("aggrotime", 0.0); //How long a target is aggro'd for
+			Bot[bot].priority = kv.GetNum("prioritize"); //Class priority
+			Bot[bot].range = kv.GetFloat("range", 800.0); //Preferred combat range
 
-			SniperAimTime[bot] = kv.GetFloat("aimtime", 1.0); //Steady rate for snipers
-			HealthThreshold[bot] = kv.GetFloat("health_threshold", 0.2); //Health threshold for when bots will try to flee
-			SniperPressureDistance[bot] = kv.GetFloat("pressure_distance", 400.0); //How close a target has to be before sniper bots begin to get nervous aim
+			Sniper[bot].aimTime = kv.GetFloat("aimtime", 1.0); //Steady rate for snipers
+			Bot[bot].healthThreshold = kv.GetFloat("health_threshold", 0.2); //Health threshold for when bots will try to flee
+			Sniper[bot].pressureDistance = kv.GetFloat("pressure_distance", 400.0); //How close a target has to be before sniper bots begin to get nervous aim
 
-			SoldierHeightMax[bot] = kv.GetFloat("height", 0.0); //Soldier height threshold
-			PreferMelee[bot] = view_as<bool>(kv.GetNum("melee")); // Do we prefer melee
-			SoldierAimGround[bot] = view_as<bool>(kv.GetNum("aimground")); // Do we prefer to shoot ground positions
-
-			PreferJump[bot] = view_as<bool>(kv.GetNum("preferjump"));
+			Soldier[bot].maxHeight = kv.GetFloat("height", 0.0); //Soldier height threshold
+			Bot[bot].preferMelee = view_as<bool>(kv.GetNum("melee")); // Do we prefer melee
+			Soldier[bot].aimGround = view_as<bool>(kv.GetNum("aimground")); // Do we prefer to shoot ground positions
+			Bot[bot].preferJump = view_as<bool>(kv.GetNum("preferjump"));
 
 			char plugin[64];
 			kv.GetString("plugin", plugin, sizeof plugin);
@@ -3690,23 +3693,24 @@ stock int GetBotHealthThreshold(int bot)
 	return (RoundToFloor(HealthThreshold[bot] * maxhp))
 }
 
-stock void SetTargetViewAngles(int bot, bool head = false, bool proj = false, bool ground = true, bool grav = false)
+stock void SetTargetViewAngles(int bot, bool head = false, bool proj = false, bool ground = true)
 {
-	float aimpos[3], aimangle[3], botpos[3], aimvec[3], angle[3], anglevariance;
+	float aimpos[3], aimangle[3], botpos[3], aimvec[3], angle[3], inaccuracy;
 	int target = BotTarget[bot];
 	if (ThinkDebug)
-		PrintCenterTextAll("Bot %N has target index: %i", bot, target);
+		PrintCenterTextAll("Bot Target index: %i", target);
 	if (!IsValidClient(target)) return;
 
 	//Make sure target is visible and within bot's aim FOV
 	if (!CheckTrace(bot, target)) return;
 	if (!TargetInFOV(bot, target, AimFOV[bot])) return;
 
+	inaccuracy = Bot[bot].inaccuracy;
 	//Does the bot prioritize aiming for the head
 	if (head)
 	{
 		GetBestHitBox(bot, target, aimpos, true);
-		anglevariance = GetSniperAccuracy(Bot[bot], SniperBot[bot]);
+		inaccuracy = GetSniperAccuracy(Bot[bot], SniperBot[bot]);
 	}
 	else if (!proj)
 	{
@@ -3727,11 +3731,6 @@ stock void SetTargetViewAngles(int bot, bool head = false, bool proj = false, bo
 			aimpos[2] += 10.5;
 		TryPredictPosition(bot, target, aimpos, botpos, GetProjSpeed(bot))
 	}
-	else if (!head && Inaccuracy[bot]) //otherwise, if our bot has innacuracy and doesn't aim for the head, add a bit of variance to cover the hitbox area
-	{
-		aimpos[2] += GetRandomFloat(-20.0, 20.0);
-		aimpos[1] += GetRandomFloat(-20.0, 20.0);
-	}
 
 	//Get vector between target and bot then get the angle
 	MakeVectorFromPoints(aimpos, botpos, aimvec);
@@ -3740,11 +3739,10 @@ stock void SetTargetViewAngles(int bot, bool head = false, bool proj = false, bo
 	aimangle[1] += 180.0;
 
 	//Add inaccuracy based on bot's settings
-	float min = Inaccuracy[bot] * -1.0;
-	float max = Inaccuracy[bot];
+	float min = inaccuracy * -1.0;
+	float max = inaccuracy;
 	float pitch = GetRandomFloat(min, max);
 	float yaw = GetRandomFloat(min, max);
-	//PrintToChatAll("Pitch: %.1f\nYaw: %.1f", pitch, yaw);
 	aimangle[0] += pitch;
 	aimangle[1] += yaw;
 
@@ -3763,21 +3761,25 @@ stock void SetTargetViewAngles(int bot, bool head = false, bool proj = false, bo
 stock float GetSniperAccuracy(TFBot bot, TFBotSniper sniper)
 {
 	float botPos[3], targetPos[3], vel[3], distance;
-	float variance;
+	float variance, confidence;
 	distance = bot.GetTargetDistance();
+	confidence = (bot.confidence / 100.0) + 1.0;
 
 	//Begin adding more variance when the target is below this bot's pressure distance
 	if (distance <= bot.pressureDist)
-		variance = ClampFloat((bot.pressureDist / distance) / bot.confidence, 3.0, 60.0, true);
+		variance = ClampFloat((bot.inaccuracy + ((bot.pressureDist / distance) / (bot.confidence * 0.1))), bot.inaccuracy, 60.0, true);
 		
 	//otherwise if the target is further than the pressure distance by 25%, begin to increase accuracy
 	else if (distance > (1.25 * bot.pressureDistance))
-		variance = ClampFloat((bot/pressureDist / distance))
+	{
+		float base = bot.pressureDist / distance;
+		variance = ClampFloat(Pow(base, confidence), 0.0, bot.inaccuracy, true);
+	}
 	
 	//faster targets should be more difficult to hit
 	GetEntPropVector(target, Prop_Data, "m_vecVelocity", vel);
 	float speed = GetVectorLength(vel);
-	float factor = speed / 300.0;
+	float factor = ClampFloat(speed / 300.0, 0.1);
 	
 	//Minimize this based on the bot's confidence
 	float percentage = ((100.0 - bot.confidence) / 100.0); //invert confidence so higher values lower the deviation
