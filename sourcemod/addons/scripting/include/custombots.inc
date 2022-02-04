@@ -30,8 +30,7 @@ enum CBParamType
 	CBParam_SoldierAimGround,
 	CBParam_SoldierGroundHeight,
 	CBParam_HPRatio,
-	CBParam_ClassPriority,
-	CBParam_AA
+	CBParam_ClassPriority
 }
 
 
@@ -41,6 +40,17 @@ enum CBParamType
 	
 ****************************************************************/
 
+/**
+ * Temporarily override a parameter for the given bot
+ * This will be reset to the config value upon the bot respawning
+ *
+ * @param1 bot - Client index of the bot
+ * @param2 value - Value to set
+ * @param3 param - Parameter to override
+ *
+ */
+ 
+ native void CB_OverrideParameter(int bot, any value, CBParamType param);
 
 /**
  * Spawn a bot by index
