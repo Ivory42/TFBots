@@ -1,5 +1,7 @@
 # Custom TF2 Bot Logic
 
+##REQUIRES TF2Items and TF2Attributes!
+
 TFBots aren't very interesting or engaging to fight, so I decided to revamp them and make them behave more like players.
 This is by no means perfect but the bots are able to behave a lot more like players than normally.
 
@@ -70,6 +72,8 @@ Fallback nodes are primarily used for 5CP maps, and thus cannot be accessed on a
 There are multiple native functions and forwards that can be used to modify bots with their own plugins.
 
 Check `scripting/include/custombots.inc` for a more detailed explanation of each function.
+
+Requries Sourcemod 1.11+ to compile
 
 #### Natives
 - `CB_SpawnBotByIndex` - Spawns a custom bot with the given index on a specific team
