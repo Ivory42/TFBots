@@ -18,6 +18,8 @@
 
 int g_iOffsetStudioHdr;
 
+bool LocalServer = false;
+
 Handle g_hGetBonePosition;
 Handle g_hWearableEquip;
 Handle g_EquipWearable;
@@ -48,7 +50,7 @@ int iPreservedAmmoP[MAXPLAYERS+1];
 int iPreservedClipP[MAXPLAYERS+1];
 int iPreservedAmmoS[MAXPLAYERS+1];
 int iPreservedClipS[MAXPLAYERS+1];
-float flBotKeepPrimaryDelay[MAXPLAYERS+1];
+float BotKeepPrimaryDelay[MAXPLAYERS+1];
 float flBotAmmoDuration[MAXPLAYERS+1] = FAR_FUTURE;
 float flAmmoPreserveDelay[MAXPLAYERS+1];
 float DamageDelay[MAXPLAYERS+1];
@@ -66,76 +68,16 @@ float CrouchTimer[MAXPLAYERS+1];
 bool ShouldCrouch[MAXPLAYERS+1];
 bool NavJump[MAXPLAYERS+1];
 bool bInCaptureArea[MAXPLAYERS+1];
-bool bScoutSingleJump[MAXPLAYERS+1];
+bool ScoutSingleJump[MAXPLAYERS+1];
 bool bIsHookedBot[MAXPLAYERS+1];
 int DamageTaken[MAXPLAYERS+1];
 
-enum struct TFBot
-{
-	//identifiers
-	int index;
-	int bot;
-	
-	//Aim properties
-	float aimDelayAdd;
-	float aimDelay;
-	float inaccuracy;
-	float fov;
-	
-	//Target properties
-	float aggroTime;
-	float aggroDelay;
-	float range;
-	float healthThreshold;
-	int target;
-	int priority;
-	
-	//Class properties
-	int healthOverride;
-	int class;
-	int offclass;
-	
-	//combat properties
-	bool attacking;
-	bool fleeing;
-	bool preferJump;
-	bool preferMelee;
-	
-	//Combat Methods
-	float TargetDistance()
-	{
-		float pos[3], target[3], distance;
-		GetClientAbsOrigin(this.bot, pos);
-		if (IsValidClient(this.target))
-		{
-			GetClientAbsOrigin(this.target, targetPos);
-			distance = GetVectorDistance(pos, targetPos);
-		}
-		return distance;
-	}
-}
-TFbot Bot[MAXPLAYERS+1];
-
-//Sniper bots
-enum struct TFBotSniper
-{
-	float headshotDelay;
-	float aimTime;
-	float confidence;
-	float pressureDistance;
-	bool scoped;
-}
-
+//Bot Structs
+TFBot Bot[MAXPLAYERS+1];
 TFBotSniper Sniper[MAXPLAYERS+1];
+TFBotSoldier Soldier[MAXPLAYERS+1];
 
-//Soldier bots
-enum struct TFBotSoldier
-{
-
-}
-TFBotSoldier Soldier[MAXPLAYERS+1]; 
-
-Client Player[MAXPLAYERS+1];
+//Client Player[MAXPLAYERS+1];
 
 float JumpTimer[MAXPLAYERS+1] = FAR_FUTURE;
 float DoubleJumpTimer[MAXPLAYERS+1] = FAR_FUTURE;
@@ -148,10 +90,10 @@ bool ShouldBotHook = false;
 bool b5CPMap = false;
 
 int Captures;
-int iForcedIndex = 0;
+int ForcedIndex = 0;
 //char JoiningBot[MAX_NAME_LENGTH];
 
-float ZeroVec[3] = {0.0, 0.0, 0.0};
+float ZeroVec[3] = {0.0, 0.0, 0.0}; //maybe can just use NULL_VECTOR??
 
 //Map Navigation Vars
 float RJPos[MAXRJPOS][3];									// Rocket Jump node Position
@@ -182,11 +124,6 @@ int NavDifficulty[MAXPLAYERS+1]; 							//(Rocket Jump) Difficulty to decide whe
 bool NavPositionSelected[MAXPLAYERS+1] = false;
 bool NavAngleSelected[MAXPLAYERS+1] = false;
 
-//Soldier specific properties
-float SoldierRJConfidence[MAXPLAYERS+1];
-float SoldierHeightMax[MAXPLAYERS+1];
-bool SoldierAimGround[MAXPLAYERS+1];
-
 //Bot Index Vars
 bool IndexTaken[MAXBOTS+1];
 
@@ -198,11 +135,9 @@ GlobalForward g_BotDeath;
 GlobalForward g_BotRocketJump;
 GlobalForward g_botAdded;
 
-ConVar g_playerBot;
 ConVar g_BotQuota;
 ConVar g_SpawnBots;
 ConVar gravscale;
-ConVar PlayerInaccuracy;
 
 public Plugin myinfo =
 {
@@ -215,6 +150,10 @@ public Plugin myinfo =
 
 public void OnPluginStart()
 {
+
+	if (!IsDedicatedServer())
+		LocalServer = true;
+		
 	HookEvent("teamplay_round_start", RoundStarted);
 	HookEvent("player_death", PlayerDeath, EventHookMode_Post);
 	HookEvent("post_inventory_application", PlayerResupply, EventHookMode_Post);
@@ -227,7 +166,6 @@ public void OnPluginStart()
 	HookEvent("teamplay_point_captured", OnPointCapped);
 
 	//Debug commands
-	RegAdminCmd("sm_botjump", RocketJump, ADMFLAG_ROOT);
 	RegAdminCmd("sm_spawnbot", CMDSpawnBot, ADMFLAG_ROOT);
 	RegAdminCmd("sm_sethp", CMDSetHP, ADMFLAG_ROOT);
 
@@ -245,10 +183,6 @@ public void OnPluginStart()
 	g_BotDeath = new GlobalForward("CB_OnBotDeath", ET_Ignore, Param_Cell, Param_Cell, Param_Cell, Param_Cell, Param_Cell);
 	g_BotRocketJump = new GlobalForward("CB_OnBotBlastJump", ET_Ignore, Param_Cell, Param_Cell, Param_Cell, Param_Cell);
 	g_botAdded = new GlobalForward("CB_OnBotAdded", ET_Ignore, Param_Cell, Param_Cell, Param_String);
-
-	//debug for testing bot aim
-	g_playerBot = CreateConVar("tf_bot_debug_aim", "0", "Allow players to use their reload key to auto aim like bots");
-	PlayerInaccuracy = CreateConVar("tf_bot_player_inaccuracy", "0.0", "Inaccuracy for players to have when debugging aim");
 
 	GenerateDirectories();
 
@@ -296,7 +230,7 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	CreateNative("CB_SetBotParameterFloat", Native_SetParamFloat);
 	CreateNative("CB_SetBotParameterInt", Native_SetParamInt);
 	CreateNative("CB_SetBotParameterBool", Native_SetParamBool);
-	CreateNative("CB_OverrideParameter", Native_TemporaryOverride);
+	CreateNative("CB_OverrideParameter", Native_TemporaryOver);
 	CreateNative("CB_IsCustomBot", Native_CustomBot);
 	CreateNative("CB_GetBotClass", Native_GetBotClass);
 	CreateNative("CB_GetBotOffClass", Native_GetBotOffClass);
@@ -310,7 +244,7 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 
 *********************************************************************************/
 
-public in Native_TemporaryOverride(Handle plugin, int args)
+public int Native_TemporaryOver(Handle plugin, int args)
 {
 	int bot = GetNativeCell(1);
 	float value = GetNativeCell(2);
@@ -329,7 +263,7 @@ public in Native_TemporaryOverride(Handle plugin, int args)
 			case CBParam_SniperAimTime: Sniper[bot].aimTime = value;
 			case CBParam_SoldierGroundHeight: Soldier[bot].maxHeight = value;
 			case CBParam_HPRatio: Bot[bot].healthThreshold = value;
-			
+
 			//boolean
 			case CBParam_PreferJump: Bot[bot].preferJump = view_as<bool>(value);
 			case CBParam_SoldierAimGround: Soldier[bot].aimGround = view_as<bool>(value);
@@ -344,11 +278,11 @@ public int Native_SpawnBotByIndex(Handle plugin, int args)
 {
 	int botid = GetNativeCell(1);
 	int team = GetNativeCell(2);
-	iForcedIndex = botid;
+	ForcedIndex = botid;
 	ShouldBotHook = true;
 	int bot = CreateFakeClient("custom_bot"); //temporary name, will be changed after bot is properly setup
 	if (IsValidClient(bot))
-		SetClientTeam(bot, team);
+		ChangeClientTeam(bot, team);
 	return bot;
 }
 
@@ -357,7 +291,7 @@ public int Native_GetBotClass(Handle plugin, int args)
 	int bot = GetNativeCell(1);
 	if (IsCustomBot(bot))
 	{
-		return Class[bot];
+		return Bot[bot].class;
 	}
 	return 0;
 }
@@ -367,7 +301,7 @@ public int Native_GetBotOffClass(Handle plugin, int args)
 	int bot = GetNativeCell(1);
 	if (IsCustomBot(bot))
 	{
-		return Offclass[bot];
+		return Bot[bot].offclass;
 	}
 	return 0;
 }
@@ -376,9 +310,9 @@ public int Native_GetBotIndex(Handle plugin, int args)
 {
 	int bot = GetNativeCell(1);
 	int index;
-	if (IsCustomBot(bot) && BotIndex[bot] > 0)
+	if (IsCustomBot(bot) && Bot[bot].index > 0)
 	{
-		index = BotIndex[bot];
+		index = Bot[bot].index;
 	}
 	return index;
 }
@@ -393,14 +327,14 @@ public int Native_SetParamFloat(Handle plugin, int args)
 	{
 		switch (param)
 		{
-			case CBParam_Aggro: AggroTime[bot] = value;
-			case CBParam_AimDelay: AimDelayAdd[bot] = value;
-			case CBParam_Range: Range[bot] = value;
-			case CBParam_FOV: AimFOV[bot] = value;
-			case CBParam_Inaccuracy: Inaccuracy[bot] = value;
-			case CBParam_SniperAimTime: SniperAimTime[bot] = value;
-			case CBParam_SoldierGroundHeight: SoldierHeightMax[bot] = value;
-			case CBParam_HPRatio: HealthThreshold[bot] = value;
+			case CBParam_Aggro: Bot[bot].aggroTime = value;
+			case CBParam_AimDelay: Bot[bot].aimDelayAdd = value;
+			case CBParam_Range: Bot[bot].range = value;
+			case CBParam_FOV: Bot[bot].fov = value;
+			case CBParam_Inaccuracy: Bot[bot].inaccuracy = value;
+			case CBParam_SniperAimTime: Sniper[bot].aimTime = value;
+			case CBParam_SoldierGroundHeight: Soldier[bot].maxHeight = value;
+			case CBParam_HPRatio: Bot[bot].healthThreshold = value;
 			default: LogMessage("Tried to set a non-float parameter with CB_SetBotParameterFloat, please use a different parameter type!");
 		}
 	}
@@ -418,9 +352,9 @@ public int Native_SetParamInt(Handle plugin, int args)
 	{
 		switch (param)
 		{
-			case CBParam_Class: Class[bot] = value;
-			case CBParam_OffClass: Offclass[bot] = value;
-			case CBParam_ClassPriority: ClassPriority[bot] = value;
+			case CBParam_Class: Bot[bot].class = value;
+			case CBParam_OffClass: Bot[bot].offclass = value;
+			case CBParam_ClassPriority: Bot[bot].priority = value;
 			default: LogMessage("Tried to set a non-integer parameter with CB_SetBotParameterInt, please use a different parameter type!");
 		}
 	}
@@ -438,8 +372,8 @@ public int Native_SetParamBool(Handle plugin, int args)
 	{
 		switch (param)
 		{
-			case CBParam_PreferJump: PreferJump[bot] = value;
-			case CBParam_SoldierAimGround: SoldierAimGround[bot] = value;
+			case CBParam_PreferJump: Bot[bot].preferJump = value;
+			case CBParam_SoldierAimGround: Soldier[bot].aimGround = value;
 			default: LogMessage("Tried to set a non-boolean parameter with CB_SetBotParameterBool, please use a different parameter type!");
 		}
 	}
@@ -455,7 +389,7 @@ public int Native_HookBot(Handle plugin, int args)
 	{
 		if (IsFakeClient(bot))
 		{
-			if (BotIndex[bot] < 1)
+			if (Bot[bot].index < 1)
 				bIsHookedBot[bot] = true;
 			else
 				LogMessage("Tried to hook a bot that already has an index assigned!");
@@ -1243,11 +1177,14 @@ Bot Join Functions
 
 public Action OnPlayerJoinTeam(Handle event, const char[] name, bool dontBroadcast)
 {
-	int iClient = GetClientOfUserId(GetEventInt(event, "userid"));
-	if (IsCustomBot(iClient) && iClient != 0)
+	int client = GetClientOfUserId(GetEventInt(event, "userid"));
+	if (IsCustomBot(client) && client != 0)
 	{
-		if (BotIndex[iClient] > 0)
+		if (Bot[client].index > 0)
 		{
+			char plname[MAX_NAME_LENGTH];
+			Bot[client].GetName(plname, sizeof plname);
+			SetClientInfo(client, "name", plname);
 			SetEventBroadcast(event, true);
 		}
 	}
@@ -1304,7 +1241,7 @@ public void OnMapStart()
 
 	b5CPMap = FindControlPoints();
 
-	CreateTimer(35.0, TimerCheckPlayers, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
+	CreateTimer(25.0, TimerCheckPlayers, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 }
 
 public bool FindControlPoints()
@@ -1325,7 +1262,7 @@ public Action CMDSpawnBot(int client, int args)
 {
 	char sCommand[8];
 	GetCmdArg(1, sCommand, sizeof sCommand);
-	iForcedIndex = StringToInt(sCommand);
+	ForcedIndex = StringToInt(sCommand);
 	ShouldBotHook = true;
 	ServerCommand("tf_bot_add 1");
 }
@@ -1356,17 +1293,19 @@ public Action TimerCheckPlayers(Handle pTimer)
 	if (count > 0)
 	{
 		int chance = GetRandomInt(1, 100);
-		if (chance <= 21 && botcount < MAXBOTS)
+		if (chance <= 35 && botcount < MAXBOTS)
 		{
 			botcount++;
+			ShouldBotHook = true;
+			//CreateFakeClient("Custom_bot");
 			char comm2[64];
 			Format(comm2, sizeof comm2, "tf_bot_quota %i", botcount);
-			ShouldBotHook = true;
 			ServerCommand(comm2);
 		}
 	}
 	else if(count == 0)
 	{
+		FreeBotIndexes();
 		ShouldBotHook = false;
 		ServerCommand("tf_bot_quota 0");
 	}
@@ -1378,7 +1317,7 @@ public void OnMapEnd()
 	FreeBotIndexes();
 }
 
-public void FreeBotIndexes()
+void FreeBotIndexes()
 {
 	for (int index = 1; index <= MAXBOTS; index++)
 	{
@@ -1390,18 +1329,15 @@ public void OnClientPutInServer(int client)
 {
 	if (IsFakeClient(client))
 	{
-		IsScoped[client] = false;
-		HeadShotDelay[client] = FAR_FUTURE;
 		if (ShouldBotHook)
 		{
 			SDKHook(client, SDKHook_GetMaxHealth, BotSetMaxHealth);
-			BotIndex[client] = GetFreeBotIndex(iForcedIndex);
-			if (BotIndex[client])
+			Bot[client].index = GetFreeBotIndex(ForcedIndex);
+			if (Bot[client].index)
 			{
 				CreateTimer(0.2, SetBotVars, client, TIMER_FLAG_NO_MAPCHANGE);
 			}
 		}
-
 		//PrintToChatAll("index = %i", BotIndex[client]);
 		ShouldBotHook = false;
 	}
@@ -1411,9 +1347,9 @@ public Action BotSetMaxHealth(int bot, int &maxHealth)
 {
 	if (IsCustomBot(bot))
 	{
-		if (HealthOverride[bot] > 0)
+		if (Bot[bot].healthOverride > 0)
 		{
-			maxHealth = HealthOverride[bot];
+			maxHealth = Bot[bot].healthOverride;
 			return Plugin_Changed;
 		}
 	}
@@ -1424,7 +1360,7 @@ public Action SetBotVars(Handle timer, int bot)
 {
 	if (IsValidClient(bot) && IsFakeClient(bot))
 	{
-		if (BotIndex[bot] > 0)
+		if (Bot[bot].index > 0)
 		{
 			KeyValues kv = new KeyValues("BotIndexes");
 
@@ -1433,7 +1369,7 @@ public Action SetBotVars(Handle timer, int bot)
 			kv.ImportFromFile(sPath);
 
 			char sBotIndex[8];
-			IntToString(BotIndex[bot], sBotIndex, sizeof sBotIndex);
+			IntToString(Bot[bot].index, sBotIndex, sizeof sBotIndex);
 
 			if (!kv.JumpToKey(sBotIndex))
 			{
@@ -1442,12 +1378,15 @@ public Action SetBotVars(Handle timer, int bot)
 				return;
 			}
 
+			Bot[bot].bot = bot;
+
 			char name[MAX_NAME_LENGTH];
 			kv.GetString("name", name, sizeof name);
+			Bot[bot].SetName(name);
 			SetClientInfo(bot, "name", name);
 			PrintToChatAll("%s has joined the game", name);
 			PrintToChatAll("%s was automatically assigned to team %s", name, (GetClientTeam(bot) == 2) ? "RED" : "BLU");
-			
+
 			/*
 				Most of these need to be moved to be obtained on spawn
 			*/
@@ -1456,8 +1395,9 @@ public Action SetBotVars(Handle timer, int bot)
 			Bot[bot].aimDelayAdd = kv.GetFloat("aimdelay", 0.0); //Cooldown on autoaim usage
 			Bot[bot].fov = kv.GetFloat("aimfov", 90.0); //FoV for target acquisition
 			Bot[bot].inaccuracy = kv.GetFloat("inaccuracy", 0.0); //deviation to add onto autoaim
-			Sniper[bot].confidence = ClampFloat(kv.GetFloat("confidence_hs", 10.0), 1.0); //Confidence for bots to keep steady aim at closer range
+			Sniper[bot].confidence = ClampFloat(kv.GetFloat("confidence_hs", 10.0), 1.0, 50.0); //Confidence for bots to keep steady aim at closer range
 			Soldier[bot].confidence = kv.GetFloat("confidence_rj", 50.0); //Confidence for bots to choose whether or not they use a rocket jump node
+			Bot[bot].proficiency = kv.GetNum("proficiency", 3); //Proficiency from 0 - 5 at how well this bot performs. 0 is only slightly better than a default TFBot and 5 is the most like a skilled player
 
 			Bot[bot].aggroTime = kv.GetFloat("aggrotime", 0.0); //How long a target is aggro'd for
 			Bot[bot].priority = kv.GetNum("prioritize"); //Class priority
@@ -1479,7 +1419,7 @@ public Action SetBotVars(Handle timer, int bot)
 			Call_StartForward(g_botAdded);
 
 			Call_PushCell(bot);
-			Call_PushCell(BotIndex[bot]);
+			Call_PushCell(Bot[bot].index);
 			Call_PushString(plugin);
 
 			Call_Finish();
@@ -1499,7 +1439,7 @@ stock int GetFreeBotIndex(int iIndex = 0)
 		if (iIndex < MAXBOTS)
 			IndexTaken[iIndex] = true;
 
-		iForcedIndex = 0;
+		ForcedIndex = 0;
 		return iIndex;
 	}
 	bool foundindex = false;
@@ -1516,7 +1456,7 @@ stock int GetFreeBotIndex(int iIndex = 0)
 					foundindex = true;
 					IndexTaken[index] = true;
 
-					iForcedIndex = 0;
+					ForcedIndex = 0;
 					return index;
 				}
 				else
@@ -1528,7 +1468,7 @@ stock int GetFreeBotIndex(int iIndex = 0)
 			}
 		}
 	}
-	iForcedIndex = 0;
+	ForcedIndex = 0;
 	return 0;
 }
 
@@ -1536,20 +1476,20 @@ public void OnClientDisconnect(int client)
 {
 	if (IsFakeClient(client))
 	{
-		if (BotIndex[client] <= MAXBOTS)
-			IndexTaken[BotIndex[client]] = false;
-		ClearBotVars(client);
+		if (Bot[client].index <= MAXBOTS)
+			IndexTaken[Bot[client].index] = false;
+		ClearBotVars(client, Bot[client]);
 	}
 }
 
-public void ClearBotVars(int client)
+public void ClearBotVars(int client, TFBot bot)
 {
 	if (IsFakeClient(client))
 	{
-		AggroTime[client] = 0.0;
-		Class[client] = 0;
-		BotTarget[client] = -1;
-		AimDelayAdd[client] = 0.0;
+		bot.aggroTime = 0.0;
+		bot.target = INVALID_ENT_REFERENCE;
+		bot.bot = INVALID_ENT_REFERENCE;
+		bot.index = 0;
 	}
 }
 
@@ -1586,17 +1526,6 @@ public bool BotPresetExists(int preset)
 	return false;
 }
 
-public Action RocketJump(int bot, int args)
-{
-	for (int iBot = 1; iBot <= MaxClients; iBot++)
-	{
-		if (IsFakeClient(iBot) && IsValidClient(iBot) && TF2_GetPlayerClass(iBot) == TFClass_Soldier)
-		{
-			JumpTimer[iBot] = GetEngineTime()+0.1;
-		}
-	}
-}
-
 public Action PlayerResupply(Handle EventH, const char[] name, bool dontBroadcast)
 {
 	int bot = GetClientOfUserId(GetEventInt(EventH, "userid"));
@@ -1604,7 +1533,7 @@ public Action PlayerResupply(Handle EventH, const char[] name, bool dontBroadcas
 	if (IsCustomBot(bot))
 	{
 		TFClassType class = TF2_GetPlayerClass(bot);
-		if (BotIndex[bot] > 0)
+		if (Bot[bot].index > 0)
 			SetupLoadout(bot, class);
 		else if (bIsHookedBot[bot])
 			SetBotClass(bot);
@@ -1613,7 +1542,7 @@ public Action PlayerResupply(Handle EventH, const char[] name, bool dontBroadcas
 		Call_StartForward(g_BotResupply);
 
 		Call_PushCell(bot);
-		Call_PushCell(BotIndex[bot]);
+		Call_PushCell(Bot[bot].index);
 		Call_PushCell(bIsHookedBot[bot]);
 
 		Call_Finish();
@@ -1667,14 +1596,14 @@ public Action CMDSetHP(int client, int args)
 
 public int SetBotClass(int bot)
 {
-	int class = Class[bot];
+	int class = Bot[bot].class;
 	if (GetRandomInt(1, 100) <= 35)
-		class = Offclass[bot];
+		class = Bot[bot].offclass;
 
 	if (class == 5) //Medics
 	{
 		if (GetPlayersOnTeam(GetClientTeam(bot)) < 3)
-			class = Offclass[bot];
+			class = Bot[bot].offclass;
 	}
 
 	SetEntProp(bot, Prop_Send, "m_iDesiredPlayerClass", class);
@@ -1687,7 +1616,7 @@ public void SetupLoadout(int bot, TFClassType class)
 {
 	if (IsValidClient(bot) && IsFakeClient(bot))
 	{
-		if (BotIndex[bot] > 0)
+		if (Bot[bot].index > 0)
 		{
 			KeyValues kv = new KeyValues("BotIndexes");
 
@@ -1696,7 +1625,7 @@ public void SetupLoadout(int bot, TFClassType class)
 			kv.ImportFromFile(sPath);
 
 			char sBotIndex[8];
-			IntToString(BotIndex[bot], sBotIndex, sizeof sBotIndex);
+			IntToString(Bot[bot].index, sBotIndex, sizeof sBotIndex);
 
 			if (!kv.JumpToKey(sBotIndex))
 			{
@@ -1733,24 +1662,24 @@ public void SetupLoadout(int bot, TFClassType class)
 			//Cosmetic2 attribs
 			int cEffect2, cPaint2R, cPaint2B;
 
-			HealthOverride[bot] = kv.GetNum("override_health", 0);
-			if (HealthOverride[bot] > 0)
+			Bot[bot].healthOverride = kv.GetNum("override_health", 0);
+			if (Bot[bot].healthOverride > 0)
 			{
-				SetEntityHealth(bot, HealthOverride[bot]);
+				SetEntityHealth(bot, Bot[bot].healthOverride);
 				//PrintToChatAll("Set health override to: %i", HealthOverride[bot]);
 			}
 
-			Class[bot] = kv.GetNum("class");
-			Offclass[bot] = kv.GetNum("offclass");
+			Bot[bot].class = kv.GetNum("class");
+			Bot[bot].offclass = kv.GetNum("offclass");
 
 			int SelectedClass = SetBotClass(bot);
 
 			GetLiteralClassName(SelectedClass, sClassName, sizeof sClassName);
 
 			if (StrEqual(sClassName, "sniper"))
-				Range[bot] *= 50.0;
+				Bot[bot].range *= 50.0;
 			else
-				Range[bot] = GetBotAttackRange(bot);
+				Bot[bot].range = GetBotAttackRange(bot);
 
 			//iAntiAim[bot] = kv.GetNum("antiaim", 0);
 
@@ -1871,40 +1800,6 @@ public void SetupLoadout(int bot, TFClassType class)
 			delete kv;
 			return;
 		}
-
-		//Regular TFBots
-		int chance = GetRandomInt(1, 100);
-		switch (class)
-		{
-			case TFClass_Soldier:
-			{
-				if (chance <= 50)
-				{
-					TF2_RemoveWeaponSlot(bot, TFWeaponSlot_Primary);
-					CreateWeapon(bot, "tf_weapon_rocketlauncher_directhit", 127, 1, 6, "", true, true);
-				}
-				TF2_RemoveWeaponSlot(bot, TFWeaponSlot_Melee);
-				CreateWeapon(bot, "tf_weapon_shovel", 416, 1, 6, "", true, true);
-			}
-			case TFClass_Medic:
-			{
-				if (chance <= 50)
-				{
-					TF2_RemoveWeaponSlot(bot, TFWeaponSlot_Secondary);
-					CreateWeapon(bot, "tf_weapon_medigun", 35, 1, 6, "", true, true);
-				}
-				TF2_RemoveWeaponSlot(bot, TFWeaponSlot_Primary);
-				CreateWeapon(bot, "tf_weapon_crossbow", 305, 1, 6, "", true, true);
-			}
-			case TFClass_Scout:
-			{
-				CreateHat(bot, 538, 6); //Killer Exclusive
-			}
-		}
-		int weapon = GetPlayerWeaponSlot(bot, TFWeaponSlot_Primary);
-		int killstreak = GetRandomInt(0, 10);
-		if (killstreak <= 5)
-			ApplyKillstreak(bot, weapon);
 	}
 	return;
 }
@@ -1983,12 +1878,12 @@ public Action PlayerHurt(Handle pEvent, const char[] name, bool dontBroadcast)
 	if (IsValidClient(victim))
 	{
 		if (IsCustomBot(victim))
-			CallMedicDelay[victim] = GetEngineTime() + (GetRandomFloat(1.0, 6.0));
+			CallMedicDelay[victim] = GetGameTime() + (GetRandomFloat(1.0, 6.0));
 
 		int damage = GetEventInt(pEvent, "damageamount");
 		DamageTaken[victim] += damage;
-		DamageDelay[victim] = GetEngineTime() + 1.0;
-		if (DamageDelay[victim] <= GetEngineTime())
+		DamageDelay[victim] = GetGameTime() + 1.0;
+		if (DamageDelay[victim] <= GetGameTime())
 			DamageTaken[victim] = 0;
 	}
 }
@@ -2030,7 +1925,7 @@ public Action PlayerDeath(Handle event, const char[] name, bool dontBroadcast)
 		Call_StartForward(g_BotDeath);
 
 		Call_PushCell(bot);
-		Call_PushCell(BotIndex[bot]);
+		Call_PushCell(Bot[bot].index);
 		Call_PushCell(bIsHookedBot[bot]);
 		Call_PushCell(attacker);
 		Call_PushCell(critType);
@@ -2090,7 +1985,7 @@ public Action BotThink(Handle Timer, int bot)
 
 	if (PathObstructed(bot))
 	{
-		JumpTimer[bot] = GetEngineTime() + 0.2;
+		JumpTimer[bot] = GetGameTime() + 0.2;
 	}
 	if (TF2_GetPlayerClass(bot) == TFClass_Soldier)
 	{
@@ -2174,7 +2069,7 @@ public void ReloadNodes()
 				RJPosExists[rjPos] = true;
 				kv.GetVector("pos", RJPos[rjPos]);
 				kv.GetVector("ang", RJAngles[rjPos], defAng);
-				kv.GetVector("NewAng", RJNewAngles[rjPos], ZeroVec);
+				kv.GetVector("NewAng", RJNewAngles[rjPos]);
 				RJDistance[rjPos] = kv.GetFloat("distance", 100.0);
 				RJAir[rjPos] = kv.GetNum("Air", 0);
 				RJDifficulty[rjPos] = kv.GetNum("difficulty", 0);
@@ -2250,66 +2145,66 @@ public Action TF2_CalcIsAttackCritical(int bot, int weapon, char[] weaponname, b
 			{
 				if (wIndex == 237) return Plugin_Continue;
 
-				if (AimDelay[bot] <= GetEngineTime())
+				if (Bot[bot].aimDelay <= GetGameTime())
 				{
 					if (IsWeaponSlotActive(bot, 0))
-						SetTargetViewAngles(bot, false, true);
+						SetTargetViewAngles(bot, Bot[bot], false, true);
 					else
-						SetTargetViewAngles(bot);
-					AimDelay[bot] = GetEngineTime() + AimDelayAdd[bot];
+						SetTargetViewAngles(bot, Bot[bot]);
+					Bot[bot].aimDelay = GetGameTime() + Bot[bot].aimDelayAdd;
 				}
 
 				//might rework later, works for now
 				JumpDelayCount[bot]--;
 				int jumpchance = GetRandomInt(1, 10);
 				int rocketjump = GetRandomInt(1, 10);
-				if (PreferJump[bot])
+				if (Bot[bot].preferJump)
 					jumpsuccess = 5;
 
 				if (rocketjump <= jumpsuccess && JumpDelayCount[bot] <= 0 && health >= 50)
 				{
-					RJDelay[bot] = GetEngineTime() + 0.8;
+					RJDelay[bot] = GetGameTime() + 0.8;
 					JumpDelayCount[bot] = 2;
 				}
-				else if (jumpchance <= 8)
+				else if (jumpchance <= 8 && Bot[bot].proficiency >= 2)
 				{
 					Jump[bot] = true;
 				}
 			}
 			case TFClass_Scout:
 			{
-				if (AimDelay[bot] <= GetEngineTime())
+				if (Bot[bot].aimDelay <= GetGameTime())
 				{
-					SetTargetViewAngles(bot);
-					AimDelay[bot] = GetEngineTime() + AimDelayAdd[bot];
+					SetTargetViewAngles(bot, Bot[bot]);
+					Bot[bot].aimDelay = GetGameTime() + Bot[bot].aimDelayAdd;
 				}
 				JumpDelayCount[bot]--;
 				int jumpchance = GetRandomInt(1, 10);
-				if (PreferJump[bot])
+				if (Bot[bot].preferJump)
 					jumpsuccess = 7;
 
-				if (jumpchance <= jumpsuccess && JumpDelayCount[bot] <= 0)
+				if (jumpchance <= jumpsuccess && JumpDelayCount[bot] <= 0 && Bot[bot].proficiency >= 2)
 				{
-					bScoutSingleJump[bot] = true;
-					JumpTimer[bot] = GetEngineTime()+0.1;
+					ScoutSingleJump[bot] = true;
+					JumpTimer[bot] = GetGameTime()+0.1;
 					JumpDelayCount[bot] = 2;
 				}
 			}
 			case TFClass_Sniper:
 			{
-				if (IsWeaponSlotActive(bot, 0) && (AimDelay[bot] <= GetEngineTime()))
+				if (IsWeaponSlotActive(bot, 0) && (Bot[bot].aimDelay <= GetGameTime()))
 				{
 					switch (wIndex)
 					{
-						case 56, 1005, 1092:
+						case 56, 1005, 1092: //huntsman
 						{
-							SetTargetViewAngles(bot, true, true);
-							AimDelay[bot] = GetEngineTime() + AimDelayAdd[bot];
+							SetTargetViewAngles(bot, Bot[bot], true, true);
+							Bot[bot].aimDelay = GetGameTime() + Bot[bot].aimDelayAdd;
 						}
 						default:
 						{
-							SetTargetViewAngles(bot, true, false, false);
-							AimDelay[bot] = GetEngineTime() + AimDelayAdd[bot];
+							SetTargetViewAngles(bot, Bot[bot], true, false, false);
+							Bot[bot].aimDelay = GetGameTime() + Bot[bot].aimDelayAdd;
 						}
 					}
 				}
@@ -2318,73 +2213,74 @@ public Action TF2_CalcIsAttackCritical(int bot, int weapon, char[] weaponname, b
 			{
 				JumpDelayCount[bot]--;
 				int jumpchance = GetRandomInt(1, 10);
-				if (PreferJump[bot])
+				if (Bot[bot].preferJump)
 					jumpsuccess = 8;
 
 				else if (jumpchance <= jumpsuccess)
 				{
 					Jump[bot] = true;
 				}
-				if (AimDelay[bot] <= GetEngineTime())
+				if (Bot[bot].aimDelay <= GetGameTime())
 				{
 					if (IsWeaponSlotActive(bot, TFWeaponSlot_Primary))
 					{
-						SetTargetViewAngles(bot, false, true);
-						AimDelay[bot] = GetEngineTime() + AimDelayAdd[bot];
+						SetTargetViewAngles(bot, Bot[bot], false, true);
+						Bot[bot].aimDelay = GetGameTime() + Bot[bot].aimDelayAdd;
 					}
 				}
 			}
 			case TFClass_Medic:
 			{
-				if (AimDelay[bot] <= GetEngineTime())
+				if (Bot[bot].aimDelay <= GetGameTime())
 				{
 					if (IsWeaponSlotActive(bot, TFWeaponSlot_Primary))
 					{
-						SetTargetViewAngles(bot, false, true);
-						AimDelay[bot] = GetEngineTime() + AimDelayAdd[bot];
+						SetTargetViewAngles(bot, Bot[bot], false, true);
+						Bot[bot].aimDelay = GetGameTime() + Bot[bot].aimDelayAdd;
 					}
 				}
 			}
 			case TFClass_Pyro:
 			{
-				if (AimDelay[bot] <= GetEngineTime())
+				if (Bot[bot].aimDelay <= GetGameTime())
 				{
 					switch (wIndex)
 					{
 						case 39, 351, 595, 740, 1081: //flareguns
 						{
-							SetTargetViewAngles(bot, false, true, false);
-							AimDelay[bot] = GetEngineTime() + AimDelayAdd[bot];
+							SetTargetViewAngles(bot, Bot[bot], false, true, false);
+							Bot[bot].aimDelay = GetGameTime() + Bot[bot].aimDelayAdd;
 						}
 						default:
 						{
-							SetTargetViewAngles(bot);
-							AimDelay[bot] = GetEngineTime() + AimDelayAdd[bot];
+							SetTargetViewAngles(bot, Bot[bot]);
+							Bot[bot].aimDelay = GetGameTime() + Bot[bot].aimDelayAdd;
 						}
 					}
 				}
 			}
 			case TFClass_Spy:
 			{
-				if (AimDelay[bot] <= GetEngineTime())
+				if (Bot[bot].aimDelay <= GetGameTime())
 				{
 					switch (wIndex)
 					{
 						case 61, 1006: //amby
 						{
-							SetTargetViewAngles(bot, true, false, false);
-							AimDelay[bot] = GetEngineTime() + AimDelayAdd[bot];
+							SetTargetViewAngles(bot, Bot[bot], true, false, false);
+							Bot[bot].aimDelay = GetGameTime() + Bot[bot].aimDelayAdd;
 						}
 						default:
 						{
-							SetTargetViewAngles(bot);
-							AimDelay[bot] = GetEngineTime() + AimDelayAdd[bot];
+							SetTargetViewAngles(bot, Bot[bot]);
+							Bot[bot].aimDelay = GetGameTime() + Bot[bot].aimDelayAdd;
 						}
 					}
 				}
 			}
 		}
 	}
+	/*
 	else if (!IsFakeClient(bot) && IsValidClient(bot) && g_playerBot.BoolValue && Player[bot].toggled)
 	{
 		int player = bot;
@@ -2396,9 +2292,11 @@ public Action TF2_CalcIsAttackCritical(int bot, int weapon, char[] weaponname, b
 		SetPlayerViewAngles(player, eyeAng, headshot, proj);
 		//RequestFrame(ResetAngles, player);
 	}
+	*/
 	return Plugin_Continue;
 }
 
+/*
 bool PlayerAimBool(int type, int weapon, char[] weaponname)
 {
 	switch (type)
@@ -2445,6 +2343,7 @@ void ResetAngles(int client)
 		TeleportEntity(client, NULL_VECTOR, angle, NULL_VECTOR);
 	}
 }
+*/
 
 /***********************************************************************************************************
 
@@ -2500,7 +2399,7 @@ stock bool Soldier_CheckRJump(int bot, float distance)
 		//If we don't hit anything, then we found the top of the ledge we can jump to
 		if (isLedge && ShouldRocketJump(bot, botPos, true)) //make sure we can actually rocket jump
 		{
-			RJDelay[bot] = GetEngineTime()+0.2;
+			RJDelay[bot] = GetGameTime() + 0.2;
 			/*
 			float distanceToLedge = GetVectorDistance(botPos, testPos);
 			float jumpAngle[3];
@@ -2549,7 +2448,7 @@ stock bool PathObstructed(int client)
 
 		if (TF2_GetPlayerClass(client) == TFClass_Scout)
 		{
-			bScoutSingleJump[client] = true;
+			ScoutSingleJump[client] = true;
 		}
 		//Object is not at eye level, so we can jump over it
 		return true;
@@ -2596,29 +2495,6 @@ public bool CheckCollision(int entity, int contentsMask, any iOwner)
 	return !(entity == iOwner);
 }
 
-stock void DoStutterStep(int client, float velocity[3], TFClassType class, float delay = 0.0)
-{
-	if (StepDelay[client] <= GetEngineTime())
-	{
-		int strafedir = GetRandomInt(1, 2);
-		if (strafedir == 1)
-			StrafeSpeed[client] = GetPlayerMaxSpeed(client) * -1;
-		else
-			StrafeSpeed[client] = GetPlayerMaxSpeed(client);
-
-		if (class == TFClass_Sniper && TF2_IsPlayerInCondition(client, TFCond_Slowed))
-		{
-			if (TargetIsValid(client, BotTarget[client]))
-				StepDelay[client] = GetEngineTime() + GetRandomFloat(0.1, 0.4);
-			else
-				return;
-		}
-		else
-			StepDelay[client] = GetEngineTime() + ((delay > 0.0) ? delay : GetRandomFloat(0.2, 0.6));
-	}
-	moveRight(velocity, StrafeSpeed[client]);
-}
-
 //Find nearest FallBack node for each team
 stock void SetFallBackPoints()
 {
@@ -2661,7 +2537,7 @@ public bool MoveTowardsNode(int bot, bool fallback)
 	if (iObstructions[bot] >= 5)
 	{
 		//Allow bot to move freely when stuck
-		flNavDelay[bot] = GetEngineTime() + GetRandomFloat(1.25, 3.0);
+		flNavDelay[bot] = GetGameTime() + GetRandomFloat(1.25, 3.0);
 		return false;
 	}
 
@@ -2692,7 +2568,7 @@ public bool MoveTowardsNode(int bot, bool fallback)
 	}
 	else // move towards nearest active control point
 	{
-		FindNearestCapturePoint(bot, iTeam, flMovePos); //Sets flMovePos as the nearest capture point position
+		FindNearestCapturePoint(iTeam, flMovePos); //Sets flMovePos as the nearest capture point position
 
 		// Don't move towards position if within radius
 		if (GetVectorDistance(flMovePos, flEyePos) <= 250.0)
@@ -2718,7 +2594,7 @@ public bool MoveTowardsNode(int bot, bool fallback)
 	return false;
 }
 
-stock float[] FindNearestCapturePoint(int bot, int team, float pos[3])
+void FindNearestCapturePoint(int team, float pos[3])
 {
 	int ent = MaxClients+1;
 	while ((ent = FindEntityByClassname(ent, "team_control_point")) != -1)
@@ -2736,7 +2612,7 @@ stock float[] FindNearestCapturePoint(int bot, int team, float pos[3])
 	}
 }
 
-stock bool ShouldFallBack(int bot)
+bool ShouldFallBack(int bot)
 {
 	int iTeam = GetClientTeam(bot);
 	int OtherTeam = GetOpposingTeam(iTeam);
@@ -2760,25 +2636,51 @@ stock bool ShouldFallBack(int bot)
 	return false;
 }
 
-void ToggleDebugAim(int client, Client player)
+stock void DoStutterStep(int client, TFBot bot, float velocity[3], TFClassType class, float delay = 0.0)
 {
-	player.toggled = !player.toggled;
-	if (player.toggled) //disable lag compensation so we can properly "lead" the target
+	if (bot.proficiency < 3) return;
+
+	if (StepDelay[client] <= GetGameTime())
 	{
-		SetEntProp(client, Prop_Data, "m_bLagCompensation", false);
-		SetEntProp(client, Prop_Data, "m_bPredictWeapons", false);
+		int strafedir = GetRandomInt(1, 2);
+		if (strafedir == 1)
+			StrafeSpeed[client] = GetPlayerMaxSpeed(client) * -1;
+		else
+			StrafeSpeed[client] = GetPlayerMaxSpeed(client);
+
+		if (class == TFClass_Sniper && TF2_IsPlayerInCondition(client, TFCond_Slowed))
+		{
+			if (TargetIsValid(client, Bot[client].target))
+				StepDelay[client] = GetGameTime() + GetRandomFloat(0.1, 0.4);
+			else
+				return;
+		}
+		else
+			StepDelay[client] = GetGameTime() + ((delay > 0.0) ? delay : GetStrafeTime(bot, false));
 	}
-	else
+	moveRight(velocity, StrafeSpeed[client]);
+}
+
+float GetStrafeTime(TFBot bot, bool scout)
+{
+	switch (bot.proficiency)
 	{
-		SetEntProp(client, Prop_Data, "m_bLagCompensation", true);
-		SetEntProp(client, Prop_Data, "m_bPredictWeapons", true);
+		case 3: return GetRandomFloat(1.2, 2.0);
+		case 4, 5:
+		{
+			if (scout)
+				return GetRandomFloat(0.8, 1.2);
+			return GetRandomFloat(0.2, 0.45);
+		}
 	}
+	return 10.0;
 }
 
 public Action OnPlayerRunCmd(int bot, int &buttons, int &impulse, float vel[3], float angles[3], int &weapon, int &subtype, int &cmdnum, int &tickcount, int &seed, int mouse[2])
 {
 	if(IsValidClient(bot))
 	{
+		/*
 		if (!IsFakeClient(bot) && g_playerBot.BoolValue) //player debug
 		{
 			int player = bot;
@@ -2793,26 +2695,26 @@ public Action OnPlayerRunCmd(int bot, int &buttons, int &impulse, float vel[3], 
 				{
 					ToggleDebugAim(player, Player[player]);
 					Player[player].toggle = true;
-
 				}
 			}
 		}
+		*/
 		float oldAngle[3];
 		oldAngle = angles;
 		if(IsFakeClient(bot))
 		{
-			if(IsPlayerAlive(bot) && (BotIndex[bot] > 0 || bIsHookedBot[bot]))
+			if(IsPlayerAlive(bot) && (Bot[bot].index > 0 || bIsHookedBot[bot]))
 			{
 				TFClassType class = TF2_GetPlayerClass(bot);
 				float speed = GetVectorLength(vel, false);
 
 				if (speed <= 60.0)
-					DoStutterStep(bot, vel, class);
+					DoStutterStep(bot, Bot[bot], vel, class);
 
-				if (GetHealth(bot) <= 50 && CallMedicDelay[bot] <= GetEngineTime())
+				if (GetHealth(bot) <= 50 && CallMedicDelay[bot] <= GetGameTime())
 				{
 					FakeClientCommand(bot, "voicemenu 0 0");
-					CallMedicDelay[bot] = GetEngineTime() + (GetRandomFloat(5.0, 35.0));
+					CallMedicDelay[bot] = GetGameTime() + (GetRandomFloat(5.0, 35.0));
 				}
 
 				if (!(class == TFClass_Sniper && TF2_IsPlayerInCondition(bot, TFCond_Slowed))) //set bot fov to 90 so spectating them isn't nauseating
@@ -2822,22 +2724,22 @@ public Action OnPlayerRunCmd(int bot, int &buttons, int &impulse, float vel[3], 
 				}
 				int team = GetClientTeam(bot);
 
-				bIsAttacking[bot] = (buttons & IN_ATTACK) != 0;
+				Bot[bot].attacking = (buttons & IN_ATTACK) != 0;
 
-				if (flBotAmmoDuration[bot] <= GetEngineTime())
+				if (flBotAmmoDuration[bot] <= GetGameTime())
 					RefreshAmmo(bot, GetPlayerWeaponSlot(bot, TFWeaponSlot_Primary), GetPlayerWeaponSlot(bot, TFWeaponSlot_Secondary));
 
-				if (JumpTimer[bot] <= GetEngineTime())
+				if (JumpTimer[bot] <= GetGameTime())
 				{
 					buttons |= IN_JUMP;
 					if (class == TFClass_Scout)
 					{
-						if (!bScoutSingleJump[bot])
-							DoubleJumpTimer[bot] = GetEngineTime() + GetRandomFloat(0.1, 0.25);
+						if (!ScoutSingleJump[bot])
+							DoubleJumpTimer[bot] = GetGameTime() + GetRandomFloat(0.1, 0.25);
 					}
 					JumpTimer[bot] = FAR_FUTURE;
 				}
-				if (DoubleJumpTimer[bot] <= GetEngineTime())
+				if (DoubleJumpTimer[bot] <= GetGameTime())
 				{
 					buttons |= IN_JUMP;
 					JumpTimer[bot] = FAR_FUTURE;
@@ -2845,27 +2747,27 @@ public Action OnPlayerRunCmd(int bot, int &buttons, int &impulse, float vel[3], 
 				}
 
 				//Find target
-				if (AggroTime[bot] <= GetEngineTime())
+				if (Bot[bot].aggroTime <= GetGameTime())
 				{
 					float vAngle2[3];
 					GetClientEyeAngles(bot, vAngle2);
-					BotTarget[bot] = SelectBestTarget(bot, vAngle2);
+					Bot[bot].target = SelectBestTarget(bot, Bot[bot], vAngle2);
 					//PrintToChatAll("Aggro Target: %i", BotAggroTarget[bot]);
-					if (IsValidClient(BotTarget[bot]) && BotTarget[bot] != bot)
-						AggroTime[bot] = GetEngineTime() + AggroDelay[bot];
+					if (IsValidClient(Bot[bot].target) && Bot[bot].target != bot)
+						Bot[bot].aggroTime = GetGameTime() + Bot[bot].aggroDelay;
 				}
 
-				if (IsValidClient(BotTarget[bot]) && TargetIsValid(bot, BotTarget[bot]))
+				if (IsValidClient(Bot[bot].target) && TargetIsValid(bot, Bot[bot].target))
 				{
 					float targetPos[3], botPos[3];
-					GetClientAbsOrigin(BotTarget[bot], targetPos);
+					GetClientAbsOrigin(Bot[bot].target, targetPos);
 					GetClientAbsOrigin(bot, botPos);
 
-					Fleeing[bot] = ShouldBotFlee(bot);
+					Bot[bot].fleeing = ShouldBotFlee(bot, Bot[bot]);
 
-					flNavDelay[bot] = GetEngineTime() + 3.0;
+					flNavDelay[bot] = GetGameTime() + 3.0;
 
-					float flDistance = GetVectorDistance(botPos, targetPos);
+					float distance = Bot[bot].TargetDistance();
 
 					int pWeapon = GetPlayerWeaponSlot(bot, TFWeaponSlot_Primary);
 					int pIndex;
@@ -2889,36 +2791,35 @@ public Action OnPlayerRunCmd(int bot, int &buttons, int &impulse, float vel[3], 
 						activeIndex = GetEntProp(activeWeapon, Prop_Send, "m_iItemDefinitionIndex");
 					}
 
-					if (!Fleeing[bot] && class != TFClass_Sniper && class != TFClass_Medic && SpyIsAttacking(bot, class))
+					if (!Bot[bot].fleeing && class != TFClass_Sniper && class != TFClass_Medic && SpyIsAttacking(bot, class))
 					{
-						if (flDistance > Range[bot] && AcceptableAngle(bot, BotTarget[bot]) && !bInCaptureArea[bot])
+						if (distance > Bot[bot].range && AcceptableAngle(bot, Bot[bot].target) && !bInCaptureArea[bot])
 						{
 							//PrintCenterTextAll("Bot Distance: %.1f\nAttack Range: %.1f", flDistance, AttackRange[bot]);
 							moveForward(vel, GetPlayerMaxSpeed(bot, false));
 						}
-
 						switch (class)
 						{
 							case TFClass_Heavy:
 							{
-								if (TF2_GetPlayerClass(BotTarget[bot]) == TFClass_Sniper)
+								if (TF2_GetPlayerClass(Bot[bot].target) == TFClass_Sniper)
 								{
 									if (ShouldCrouch[bot])
 									{
 										buttons |= IN_DUCK;
 									}
-									if (CrouchTimer[bot] < GetEngineTime())
+									if (CrouchTimer[bot] < GetGameTime())
 									{
 										ShouldCrouch[bot] = false;
 									}
-									if (CrouchDelay[bot] < GetEngineTime())
+									if (CrouchDelay[bot] < GetGameTime())
 									{
 										int chance = GetRandomInt(1, 100);
 										if (chance >= 35)
 										{
 											ShouldCrouch[bot] = true;
-											CrouchTimer[bot] = GetEngineTime() + GetRandomFloat(0.1, 0.7);
-											CrouchDelay[bot] = GetEngineTime() + GetRandomFloat(1.0, 6.0);
+											CrouchTimer[bot] = GetGameTime() + GetRandomFloat(0.1, 0.7);
+											CrouchDelay[bot] = GetGameTime() + GetRandomFloat(1.0, 6.0);
 										}
 									}
 								}
@@ -2927,17 +2828,17 @@ public Action OnPlayerRunCmd(int bot, int &buttons, int &impulse, float vel[3], 
 							{
 								if (IsWeaponSlotActive(bot, TFWeaponSlot_Melee)) // demo with melee
 								{
-									float flCharge;
+									float charge;
 									if (shield[bot] > MaxClients)
-										flCharge = GetEntPropFloat(bot, Prop_Send, "m_flChargeMeter");
-									if (flDistance <= 50.0)
+										charge = GetEntPropFloat(bot, Prop_Send, "m_flChargeMeter");
+									if (distance <= 50.0)
 										buttons |= IN_ATTACK;
 									else if (TF2_IsPlayerInCondition(bot, TFCond_Charging))
 										buttons &= ~IN_ATTACK;
 
-									if (650.0 > flDistance >= Range[bot] && CheckTrace(bot, BotTarget[bot]))
+									if (650.0 > distance >= Bot[bot].range && CheckTrace(bot, Bot[bot].target))
 									{
-										if (flCharge >= 100.0)
+										if (charge >= 100.0)
 											buttons |= IN_ATTACK2;
 									}
 									else
@@ -2946,13 +2847,16 @@ public Action OnPlayerRunCmd(int bot, int &buttons, int &impulse, float vel[3], 
 							}
 							case TFClass_Scout:
 							{
-								if (flDistance <= Range[bot] + 200.0)
-									DoStutterStep(bot, vel, class, GetRandomFloat(0.4, 0.9));
+								if (distance > 900.0) 	//don't waste ammo on targets too far away
+									buttons &= ~IN_ATTACK;
 
-								if (GetEntProp(GetPlayerWeaponSlot(bot, TFWeaponSlot_Primary), Prop_Send, "m_iClip1") == 0 && flBotKeepPrimaryDelay[bot] <= GetEngineTime())
+								if (distance <= Bot[bot].range + 200.0)
+									DoStutterStep(bot, Bot[bot], vel, class, GetStrafeTime(Bot[bot], true));
+
+								if (GetEntProp(GetPlayerWeaponSlot(bot, TFWeaponSlot_Primary), Prop_Send, "m_iClip1") == 0 && BotKeepPrimaryDelay[bot] <= GetGameTime())
 								{
 									TryKeepSlot(bot, GetPlayerWeaponSlot(bot, TFWeaponSlot_Primary), GetPlayerWeaponSlot(bot, TFWeaponSlot_Secondary), TFWeaponSlot_Primary, 10.0, buttons);
-									flBotKeepPrimaryDelay[bot] = GetEngineTime() + 25.0;
+									BotKeepPrimaryDelay[bot] = GetGameTime() + 25.0;
 								}
 							}
 							case TFClass_Pyro:
@@ -2965,21 +2869,21 @@ public Action OnPlayerRunCmd(int bot, int &buttons, int &impulse, float vel[3], 
 											buttons |= IN_ATTACK2;
 									}
 								}
-								if (flDistance <= 450.0)
+								if (distance <= 450.0)
 									buttons |= IN_ATTACK;
 
-								if (flDistance >= 125.0)
+								if (distance >= 125.0)
 									buttons &= ~IN_ATTACK2;
 
 								switch (sIndex)
 								{
 									case 39, 351, 740, 1081: //flareguns
 									{
-										if (TF2_IsPlayerInCondition(BotTarget[bot], TFCond_OnFire) && IsWeaponSlotActive(bot, TFWeaponSlot_Primary))
-										{
+										//if (TF2_IsPlayerInCondition(Bot[bot].target, TFCond_OnFire) && IsWeaponSlotActive(bot, TFWeaponSlot_Primary))
+										//{
 											//if (TargetIsValid(bot, BotAggroTarget[bot]) && TargetInRange(bot, BotAggroTarget[bot], true, 125.0))
 												//TryKeepSlot(bot, GetPlayerWeaponSlot(bot, TFWeaponSlot_Primary), GetPlayerWeaponSlot(bot, TFWeaponSlot_Secondary), TFWeaponSlot_Secondary, 2.0, buttons);
-										}
+										//}
 									}
 								}
 							}
@@ -2991,14 +2895,14 @@ public Action OnPlayerRunCmd(int bot, int &buttons, int &impulse, float vel[3], 
 									{
 										if (TF2_IsPlayerInCondition(bot, TFCond_BlastJumping))
 										{
-											if (TargetIsValid(bot, BotTarget[bot]) && TargetInRange(bot, BotTarget[bot], false, 600.0))
+											if (TargetIsValid(bot, Bot[bot].target) && TargetInRange(bot, Bot[bot], false, 600.0))
 												TryKeepSlot(bot, GetPlayerWeaponSlot(bot, TFWeaponSlot_Primary), GetPlayerWeaponSlot(bot, TFWeaponSlot_Secondary), TFWeaponSlot_Melee, 0.5, buttons);
 										}
 									}
 								}
 								switch (activeIndex)
 								{
-									case 237: //Rocket Jumper
+									case 237: //Rocket Jumper - Will be moved to separate plugin
 									{
 										float targetAngle[3];
 										if (TF2_IsPlayerInCondition(bot, TFCond_BlastJumping))
@@ -3010,10 +2914,10 @@ public Action OnPlayerRunCmd(int bot, int &buttons, int &impulse, float vel[3], 
 											else
 												buttons &= ~IN_ATTACK;
 										}
-										else if (Soldier_GetMarketGardenAngle(bot, botPos, targetPos, targetAngle) && IsOnGround(bot))
+										else if (Soldier_GetBombJumpAngle(bot, botPos, targetPos, targetAngle) && IsOnGround(bot))
 										{
 											float jumpAngle[3] = {80.0, 160.0, 0.0};
-											jumpAngle[0] -= ClampFloat(flDistance / 50.0, 0.0, 20.0);
+											jumpAngle[0] -= ClampFloat(distance / 50.0, 0.0, 20.0);
 											//PrintCenterTextAll("Can Market Garden\n Angle: %.1f", jumpAngle[0]);
 											Soldier_DoRocketJump(bot, vel, jumpAngle, buttons, activeIndex, 1.3, 1.6);
 										}
@@ -3022,11 +2926,25 @@ public Action OnPlayerRunCmd(int bot, int &buttons, int &impulse, float vel[3], 
 											buttons &= ~IN_ATTACK;
 										}
 									}
+									default:
+									{
+										float targetAngle[3];
+										if (distance > Bot[bot].range && RJDelay[bot] <= GetGameTime())
+										{
+											if (Soldier_GetBombJumpAngle(bot, botPos, targetPos, targetAngle) && IsOnGround(bot))
+											{
+												float jumpAngle[3] = {80.0, 160.0, 0.0};
+												jumpAngle[0] -= ClampFloat(distance / 50.0, 0.0, 20.0);
+												Soldier_DoRocketJump(bot, vel, jumpAngle, buttons, activeIndex, 1.3, 1.6);
+												RJDelay[bot] = GetGameTime() + 1.5;
+											}
+										}
+									}
 								}
 							}
 						}
 					}
-					else if (Fleeing[bot] && !DemoIsDemoknight(bot))
+					else if (Bot[bot].fleeing && !DemoIsDemoknight(bot))
 					{
 						switch (class)
 						{
@@ -3036,9 +2954,9 @@ public Action OnPlayerRunCmd(int bot, int &buttons, int &impulse, float vel[3], 
 								{
 									case 775: //escape plan
 									{
-										if (!TargetIsValid(bot, BotTarget[bot]) || !TargetInRange(bot, BotTarget[bot]))
+										if (!TargetIsValid(bot, Bot[bot].target) || !TargetInRange(bot, Bot[bot]))
 										{
-											if (GetHealth(bot) <= GetBotHealthThreshold(bot))
+											if (GetHealth(bot) <= GetBotHealthThreshold(bot) * 0.5)
 											{
 												if (IsWeaponSlotActive(bot, TFWeaponSlot_Primary))
 													TryKeepSlot(bot, GetPlayerWeaponSlot(bot, TFWeaponSlot_Primary), GetPlayerWeaponSlot(bot, TFWeaponSlot_Secondary), TFWeaponSlot_Melee, 4.0, buttons);
@@ -3049,12 +2967,12 @@ public Action OnPlayerRunCmd(int bot, int &buttons, int &impulse, float vel[3], 
 								}
 								switch (activeIndex)
 								{
-									case 237: //rocket Jumper
+									case 237: //rocket Jumper - To be moved to separate plugin
 									{
 										buttons &= ~IN_ATTACK;
-										if (flDistance <= 300.0)
+										if (distance <= 300.0)
 										{
-											if (ShouldRocketJump(bot, botPos, false))
+											if (ShouldRocketJump(bot, Bot[bot], botPos, false))
 											{
 												float jumpAngle[3];
 												GetClientEyeAngles(bot, jumpAngle);
@@ -3074,7 +2992,7 @@ public Action OnPlayerRunCmd(int bot, int &buttons, int &impulse, float vel[3], 
 				}
 				else if (IsControlPoints() && Captures >= 1)		//Movement for CP maps ONLY WHEN NO VALID TARGET EXISTS AND THE FIRST POINT IS CAPTURED
 				{
-					if (flNavDelay[bot] <= GetEngineTime() && IsPushClass(class) && !Fleeing[bot])
+					if (flNavDelay[bot] <= GetGameTime() && IsPushClass(class) && !Bot[bot].fleeing)
 					{
 						if (MoveTowardsNode(bot, ShouldFallBack(bot)))
 							moveForward(vel, GetPlayerMaxSpeed(bot, false));
@@ -3088,7 +3006,7 @@ public Action OnPlayerRunCmd(int bot, int &buttons, int &impulse, float vel[3], 
 						DemoknightPreventCharge(bot, buttons);
 				}
 
-				switch (class)
+				switch (class) //switch independent of having a target
 				{
 					case TFClass_Medic:
 					{
@@ -3105,7 +3023,7 @@ public Action OnPlayerRunCmd(int bot, int &buttons, int &impulse, float vel[3], 
 						{
 							case 214: //powerjack
 							{
-								if (!TargetIsValid(bot, BotTarget[bot]) || !TargetInRange(bot, BotTarget[bot]))
+								if (!TargetIsValid(bot, Bot[bot].target) || !TargetInRange(bot, Bot[bot]))
 								{
 									if (IsWeaponSlotActive(bot, TFWeaponSlot_Primary))
 										TF2_SwitchToSlot(bot, TFWeaponSlot_Melee);
@@ -3115,30 +3033,21 @@ public Action OnPlayerRunCmd(int bot, int &buttons, int &impulse, float vel[3], 
 					}
 					case TFClass_Sniper:
 					{
-						int iTarget = GetTargetAim(bot);
+						int iTarget = Sniper_GetTargetAim(bot, Bot[bot], Sniper[bot]);
 						if (CheckTrace(bot, iTarget))
 						{
 							if (CheckSniperShouldAim(bot))
 								buttons |= IN_ATTACK2;
-							else if (HeadShotDelay[bot] <= GetEngineTime() && TF2_IsPlayerInCondition(bot, TFCond_Slowed))
+							else if (Sniper[bot].headshotDelay <= GetGameTime() && TF2_IsPlayerInCondition(bot, TFCond_Slowed))
 							{
 								buttons |= IN_ATTACK;
-								//PrintToChatAll("fire");
+								Sniper[bot].acquired = false;
 							}
 						}
 
-						if ((buttons & IN_ATTACK) && AimDelay[bot] <= GetEngineTime())
+						if ((buttons & IN_ATTACK) && Bot[bot].aimDelay <= GetGameTime())
 						{
-							SetTargetViewAngles(bot, true);
-						}
-					}
-					case TFClass_Scout:
-					{
-						if (PreferMelee[bot] && !Fleeing[bot])
-						{
-							if (!IsWeaponSlotActive(bot, TFWeaponSlot_Melee))
-								TF2_SwitchToSlot(bot, TFWeaponSlot_Melee);
-
+							SetTargetViewAngles(bot, Bot[bot], true);
 						}
 					}
 					case TFClass_Soldier:
@@ -3147,7 +3056,7 @@ public Action OnPlayerRunCmd(int bot, int &buttons, int &impulse, float vel[3], 
 						int SoldierPrimary = GetEntProp(pWeapon, Prop_Send, "m_iItemDefinitionIndex");
 						float pos[3];
 						GetClientEyePosition(bot, pos);
-						if (TF2_IsPlayerInCondition(bot, TFCond_BlastJumping) && RJForwardDelay[bot] <= GetEngineTime())
+						if (TF2_IsPlayerInCondition(bot, TFCond_BlastJumping) && RJForwardDelay[bot] <= GetGameTime())
 						{
 							if (NavJump[bot] && !ZeroVector(RJPreservedAngles[bot]))
 							{
@@ -3157,7 +3066,7 @@ public Action OnPlayerRunCmd(int bot, int &buttons, int &impulse, float vel[3], 
 							else
 								moveForward(vel, 500.0);
 
-							if (RJForwardTime[bot] <= GetEngineTime())
+							if (RJForwardTime[bot] <= GetGameTime())
 							{
 								RJForwardDelay[bot] = FAR_FUTURE;
 								RJForwardTime[bot] = FAR_FUTURE;
@@ -3165,12 +3074,12 @@ public Action OnPlayerRunCmd(int bot, int &buttons, int &impulse, float vel[3], 
 							}
 						}
 
-						if (ShouldRocketJump(bot, pos, true))
+						if (ShouldRocketJump(bot, Bot[bot], pos, true))
 						{
 							float newAim[3];
 
 							//Rocket Jump during combat
-							if (RJDelay[bot] <= GetEngineTime() && IsWeaponSlotActive(bot, TFWeaponSlot_Primary))
+							if (RJDelay[bot] <= GetGameTime() && IsWeaponSlotActive(bot, TFWeaponSlot_Primary))
 							{
 								if (!NavJump[bot])
 								{
@@ -3250,9 +3159,9 @@ stock void Soldier_DoRocketJump(int bot, float vel[3], float jumpAngle[3] = {60.
 	buttons |= IN_ATTACK;
 	vel = moveForward(vel, 500.0);
 	RJDelay[bot] = FAR_FUTURE;
-	RJCooldown[bot] = GetEngineTime() + delay;
-	RJForwardDelay[bot] = GetEngineTime() + 0.28;
-	RJForwardTime[bot] = GetEngineTime() + forwardTime;
+	RJCooldown[bot] = GetGameTime() + delay;
+	RJForwardDelay[bot] = GetGameTime() + 0.28;
+	RJForwardTime[bot] = GetGameTime() + forwardTime;
 
 	CallRocketJump(bot, weapon);
 }
@@ -3271,14 +3180,14 @@ stock void Soldier_JumpToLedge(int bot, float vel, float jumpAngle[3] = {60.0, 1
 	buttons |= IN_DUCK;
 	buttons |= IN_ATTACK;
 	RJDelay[bot] = FAR_FUTURE;
-	RJForwardDelay[bot] = GetEngineTime() + 0.2;
-	RJForwardTime[bot] = GetEngineTime() + 1.2;
+	RJForwardDelay[bot] = GetGameTime() + 0.2;
+	RJForwardTime[bot] = GetGameTime() + 1.2;
 }
 
-stock bool Soldier_GetMarketGardenAngle(int bot, float botPos[3], float targPos[3], float angle[3])
+stock bool Soldier_GetBombJumpAngle(int bot, float botPos[3], float targPos[3], float angle[3])
 {
 	bool result = false;
-	if (!ShouldRocketJump(bot, botPos, false))
+	if (!ShouldRocketJump(bot, Bot[bot], botPos, false))
 	{
 		return false;
 	}
@@ -3320,7 +3229,7 @@ stock void DemoknightPreventCharge(int bot, int &buttons)
 
 stock void TryKeepSlot(int bot, int primary, int secondary, int slot, float duration, int &buttons)
 {
-	if (flAmmoPreserveDelay[bot] <= GetEngineTime())
+	if (flAmmoPreserveDelay[bot] <= GetGameTime())
 	{
 		int iAmmoType;
 		//Make sure weapon exists and has a clip
@@ -3389,14 +3298,14 @@ stock void TryKeepSlot(int bot, int primary, int secondary, int slot, float dura
 
 	if (slot == 2)
 	{
-		if (GetDistance(bot, BotTarget[bot]) < 255.0)
+		if (GetDistance(bot, Bot[bot].target) < 255.0)
 			buttons |= IN_ATTACK;
 		else
 			buttons &= ~IN_ATTACK;
 	}
 	//Set duration to hold melee weapon for
-	flBotAmmoDuration[bot] = GetEngineTime() + duration;
-	flAmmoPreserveDelay[bot] = GetEngineTime() + 1.0;
+	flBotAmmoDuration[bot] = GetGameTime() + duration;
+	flAmmoPreserveDelay[bot] = GetGameTime() + 1.0;
 }
 
 stock void RefreshAmmo(int bot, int primary, int secondary)
@@ -3471,7 +3380,7 @@ stock void CallRocketJump(int bot, int weapon)
 	Call_StartForward(g_BotRocketJump);
 
 	Call_PushCell(bot);
-	Call_PushCell(BotIndex[bot]);
+	Call_PushCell(Bot[bot].index);
 	Call_PushCell(bIsHookedBot[bot]);
 	Call_PushCell(weapon);
 
@@ -3490,7 +3399,7 @@ stock bool IsPushClass(TFClassType class)
 stock bool Soldier_ValidRJPos(int bot, int nav, int team)
 {
 	int tryJump = GetRandomInt(1, 100); //Soldiers with lower confidence ratings are less likely to use jump nodes TODO: add specific confidence ratings per jump node
-	if (SoldierRJConfidence[bot] >= tryJump)
+	if (Soldier[bot].confidence >= tryJump)
 	{
 		if (RJTeam[nav] == team || RJTeam[nav] == 0) //correct team
 		{
@@ -3501,11 +3410,11 @@ stock bool Soldier_ValidRJPos(int bot, int nav, int team)
 				else
 					return false;
 			}
-			else if (RJCooldown[bot] <= GetEngineTime()) //Nav point does not require bot to be in the air
+			else if (RJCooldown[bot] <= GetGameTime()) //Nav point does not require bot to be in the air
 				return true;
 		}
 	}
-	RJCooldown[bot] = GetEngineTime() + 4.0;
+	RJCooldown[bot] = GetGameTime() + 4.0;
 	return false;
 }
 
@@ -3523,12 +3432,13 @@ public void TF2_OnConditionAdded(int client, TFCond condition)
 {
 	if (IsCustomBot(client))
 	{
-		if (condition == TFCond_Slowed)
+		if (condition == TFCond_Slowed && IsValidClient(Bot[client].target))
 		{
-			float delay = SniperAimTime[client];
+			float delay = Sniper[client].aimTime;
 			delay += (GetRandomFloat(-0.25, 0.85)); //add some variance for more natural aim
-			ClampFloat(delay, 0.225); //Clamp delay
-			HeadShotDelay[client] = GetEngineTime() + delay;
+			ClampFloat(delay, 0.225, 9999.0); //Clamp delay
+			Sniper[client].headshotDelay = GetGameTime() + delay;
+			Sniper[client].acquired = true;
 			//PrintToChatAll("delay by %.1f", delay);
 		}
 	}
@@ -3561,16 +3471,19 @@ stock bool SpyIsAttacking(int bot, TFClassType class)
 	return true;
 }
 
-stock bool ShouldRocketJump(int bot, float pos[3], bool checkHealth = true)
+stock bool ShouldRocketJump(int bot, TFBot TBot, float pos[3], bool checkHealth = true)
 {
+	if (TBot.proficiency < 3)
+		return false;
+
 	bool result = false;
-	if (RJCooldown[bot] >= GetEngineTime()) return false;
+	if (RJCooldown[bot] >= GetGameTime()) return false;
 	if (IsValidClient(bot) && IsCustomBot(bot))
 	{
 		//Check if there is an object above us
 		float endPos[3];
 		endPos = pos;
-		endPos[2] += 200.0;
+		endPos[2] += 250.0;
 		Handle trace = TR_TraceRayFilterEx(pos, endPos, MASK_PLAYERSOLID, RayType_EndPoint, FilterSelf, bot);
 		if (!TR_DidHit(trace))
 		{
@@ -3583,10 +3496,10 @@ stock bool ShouldRocketJump(int bot, float pos[3], bool checkHealth = true)
 			int secondary = GetPlayerWeaponSlot(bot, TFWeaponSlot_Secondary);
 			if (!IsValidEntity(secondary)) //No secondary, likely has gunboats
 			{
-				if (GetHealth(bot) > 30)
+				if (GetHealth(bot) > 40)
 					result = true;
 			}
-			else if (GetHealth(bot) > 55)
+			else if (GetHealth(bot) > 65)
 				result = true;
 			else
 				result = false;
@@ -3648,7 +3561,7 @@ stock bool MedicShouldUber(int bot, int patient = 0)
 				{
 					if (IsValidClient(patient))
 					{
-						if(bIsAttacking[patient])
+						if(Bot[patient].attacking)
 							return true;
 					}
 				}
@@ -3668,7 +3581,7 @@ stock bool MedicShouldUber(int bot, int patient = 0)
 	return false;
 }
 
-stock bool ShouldBotFlee(int bot)
+stock bool ShouldBotFlee(int bot, TFBot TBot)
 {
 	if (IsValidClient(bot) && IsCustomBot(bot))
 	{
@@ -3678,7 +3591,7 @@ stock bool ShouldBotFlee(int bot)
 
 		//Setup values to check against
 		float hpratio = curhp / maxhp;
-		float threshold = HealthThreshold[bot];
+		float threshold = TBot.healthThreshold;
 
 		//PrintCenterTextAll("BotHP: %.1f BotMaxHP: %.1f HPRatio: %.1f Threshold: %.1f Fleeing: %s", curhp, maxhp, hpratio, threshold, bFleeing[bot] ? "True" : "False");
 		if (hpratio <= threshold)
@@ -3690,34 +3603,31 @@ stock bool ShouldBotFlee(int bot)
 stock int GetBotHealthThreshold(int bot)
 {
 	float maxhp = float(GetEntProp(bot, Prop_Data, "m_iMaxHealth"));
-	return (RoundToFloor(HealthThreshold[bot] * maxhp))
+	return (RoundToFloor(Bot[bot].healthThreshold * maxhp))
 }
 
-stock void SetTargetViewAngles(int bot, bool head = false, bool proj = false, bool ground = true)
+stock void SetTargetViewAngles(int bot, TFBot TBot, bool head = false, bool proj = false, bool ground = true)
 {
 	float aimpos[3], aimangle[3], botpos[3], aimvec[3], angle[3], inaccuracy;
-	int target = BotTarget[bot];
-	if (ThinkDebug)
-		PrintCenterTextAll("Bot Target index: %i", target);
+	int target = TBot.target;
 	if (!IsValidClient(target)) return;
 
 	//Make sure target is visible and within bot's aim FOV
 	if (!CheckTrace(bot, target)) return;
-	if (!TargetInFOV(bot, target, AimFOV[bot])) return;
+	if (!TargetInFOV(bot, target, TBot.fov)) return;
 
-	inaccuracy = Bot[bot].inaccuracy;
+	inaccuracy = TBot.inaccuracy;
 	//Does the bot prioritize aiming for the head
 	if (head)
 	{
 		GetBestHitBox(bot, target, aimpos, true);
-		inaccuracy = GetSniperAccuracy(Bot[bot], SniperBot[bot]);
+		inaccuracy = GetSniperAccuracy(TBot, Sniper[bot]);
 	}
 	else if (!proj)
 	{
 		GetClientAbsOrigin(target, aimpos);
 		aimpos[2] += 40.0;
 	}
-
 	GetClientEyePosition(bot, botpos);
 	GetClientEyeAngles(bot, angle);
 
@@ -3729,7 +3639,7 @@ stock void SetTargetViewAngles(int bot, bool head = false, bool proj = false, bo
 			aimpos[2] += 35.0;
 		else
 			aimpos[2] += 10.5;
-		TryPredictPosition(bot, target, aimpos, botpos, GetProjSpeed(bot))
+		TryPredictPosition(bot, target, aimpos, GetProjSpeed(bot))
 	}
 
 	//Get vector between target and bot then get the angle
@@ -3747,11 +3657,11 @@ stock void SetTargetViewAngles(int bot, bool head = false, bool proj = false, bo
 	aimangle[1] += yaw;
 
 	//Only add aim variance if it is non zero
-	if (anglevariance)
-	{
-		aimangle[0] += GetRandomFloat((anglevariance * -1.0), anglevariance);
-		aimangle[1] += GetRandomFloat((anglevariance * -1.0), anglevariance);
-	}
+	//if (anglevariance)
+	//{
+	//	aimangle[0] += GetRandomFloat((anglevariance * -1.0), anglevariance);
+	//	aimangle[1] += GetRandomFloat((anglevariance * -1.0), anglevariance);
+	//}
 
 	//clamp angles to prevent janking
 	ClampAngle(aimangle);
@@ -3760,33 +3670,35 @@ stock void SetTargetViewAngles(int bot, bool head = false, bool proj = false, bo
 
 stock float GetSniperAccuracy(TFBot bot, TFBotSniper sniper)
 {
-	float botPos[3], targetPos[3], vel[3], distance;
+	float vel[3], distance;
 	float variance, confidence;
-	distance = bot.GetTargetDistance();
-	confidence = (bot.confidence / 100.0) + 1.0;
+	int target = bot.target;
+	distance = bot.TargetDistance();
+	confidence = (sniper.confidence / 100.0) + 1.0;
 
 	//Begin adding more variance when the target is below this bot's pressure distance
-	if (distance <= bot.pressureDist)
-		variance = ClampFloat((bot.inaccuracy + ((bot.pressureDist / distance) / (bot.confidence * 0.1))), bot.inaccuracy, 60.0, true);
-		
+	if (distance <= sniper.pressureDistance)
+		variance = ClampFloat((bot.inaccuracy + ((sniper.pressureDistance / distance) / (sniper.confidence * 0.01))), bot.inaccuracy, 60.0, true);
+
 	//otherwise if the target is further than the pressure distance by 25%, begin to increase accuracy
-	else if (distance > (1.25 * bot.pressureDistance))
+	else if (distance > (1.25 * sniper.pressureDistance))
 	{
-		float base = bot.pressureDist / distance;
-		variance = ClampFloat(Pow(base, confidence), 0.0, bot.inaccuracy, true);
+		float base = (sniper.pressureDistance / distance) + (bot.inaccuracy * 0.34);
+		variance = ClampFloat((Pow(base, confidence) + (confidence * 0.5)), 0.0, bot.inaccuracy, true);
 	}
-	
+
 	//faster targets should be more difficult to hit
 	GetEntPropVector(target, Prop_Data, "m_vecVelocity", vel);
 	float speed = GetVectorLength(vel);
-	float factor = ClampFloat(speed / 300.0, 0.1);
-	
+	float factor = ClampFloat((speed / 300.0) * (50.0 - float(bot.proficiency) / 50.0), 0.1, 99999.0); //higher proficiencies will slightly lower this factor
+
 	//Minimize this based on the bot's confidence
-	float percentage = ((100.0 - bot.confidence) / 100.0); //invert confidence so higher values lower the deviation
+	float percentage = ((100.0 - sniper.confidence) / 100.0); //invert confidence so higher values lower the deviation
 	factor *= percentage;
 	return variance * factor;
 }
 
+/*
 stock void SetPlayerViewAngles(int client, float angle[3], bool head = false, bool proj = false, ground = true)
 {
 	//TFClassType class = TF2_GetPlayerClass(bot);
@@ -3849,6 +3761,7 @@ stock void SetPlayerViewAngles(int client, float angle[3], bool head = false, bo
 	ClampAngle(aimangle);
 	TeleportEntity(client, NULL_VECTOR, aimangle, NULL_VECTOR);
 }
+*/
 
 stock bool TargetInFOV(int bot, int target, float fov)
 {
@@ -3880,42 +3793,47 @@ stock void SetHP(int client, int amount = 10000)
 	SetEntityHealth(client, amount);
 }
 
-stock int GetTargetAim(int bot)
+int Sniper_GetTargetAim(int owner, TFBot bot, TFBotSniper sniper)
 {
 	//SetTargetViewAngles(bot, true);
-	int target = BotTarget[bot];
-	if (target != bot) return target;
-	return bot;
+	int target = bot.target;
+	if (target != owner && !sniper.acquired)
+	{
+		sniper.acquired = true;
+		sniper.headshotDelay = GetGameTime() + sniper.aimTime;
+		return target;
+	}
+	return owner;
 }
 
-void TryPredictPosition(int bot, int target, float TargetLocation[3], float BotPos[3], float ProjSpeed) //Try and aim where a target will be in the future
+void TryPredictPosition(int bot, int target, float TargetLocation[3], float ProjSpeed) //Try and aim where a target will be in the future
 {
 	if(!target || !IsValidClient(target)) return;
 	if(target != bot)
 	{
-		float flDistance, flTravelTime, TargetVelocity[3], projGrav;
-		GetEntPropVector(target, Prop_Data, "m_vecVelocity", TargetVelocity);
-		flDistance = GetVectorDistance(BotPos, TargetLocation);
-		flTravelTime = flDistance / ProjSpeed;
+		float distance, travelTime, targetVelocity[3]; //projGrav;
+		GetEntPropVector(target, Prop_Data, "m_vecVelocity", targetVelocity);
+		distance = GetDistance(bot, target);
+		travelTime = distance / ProjSpeed;
 
 		float gravity = -1.0 * (GetConVarFloat(gravscale) / 2.0);
 		float y;
 
 		//Try and predict where the target will be when the projectile hits
-		TargetLocation[0] += TargetVelocity[0] * flTravelTime;
-		TargetLocation[1] += TargetVelocity[1] * flTravelTime;
+		TargetLocation[0] += targetVelocity[0] * travelTime;
+		TargetLocation[1] += targetVelocity[1] * travelTime;
 		if (GetEntityFlags(target) & FL_ONGROUND)
-			TargetLocation[2] += TargetVelocity[2] * flTravelTime;
+			TargetLocation[2] += targetVelocity[2] * travelTime;
 		else
 		{
 			//Check if soldier bots should aim for the ground or not
-			if (SoldierAimGround[bot])
+			if (Soldier[bot].aimGround)
 			{
-				TargetLocation[2] = TryGetGroundPosition(target, TargetLocation, SoldierHeightMax[bot], flTravelTime, TargetVelocity[2], gravity);
+				TargetLocation[2] = TryGetGroundPosition(target, TargetLocation, Soldier[bot].maxHeight, travelTime, targetVelocity[2], gravity);
 			}
 			else
 			{
-				y = TargetVelocity[2] * flTravelTime + (gravity * Pow(flTravelTime, 2.0));
+				y = targetVelocity[2] * travelTime + (gravity * Pow(travelTime, 2.0));
 				TargetLocation[2] += y;
 
 				//Check if target will hit a surface
@@ -4041,25 +3959,29 @@ stock int GetHealth(bot)
 
 stock bool IsValidClient(int bot)
 {
-    if ( !( 1 <= bot <= MaxClients ) || !IsClientInGame(bot) )
-        return false;
+	int min = 1;
+	if (LocalServer) //Player hosting the server will be index 0
+		min = 0;
+		
+	if (!(min <= bot <= MaxClients ) || !IsClientInGame(bot))
+		return false;
 
-    return true;
+	return true;
 }
 
-stock int SelectBestTarget(int bot, float oAngles[3]) //Gets the closest visible target to the bot
+stock int SelectBestTarget(int bot, TFBot TBot, float oAngles[3]) //Gets the closest visible target to the bot
 {
-	float vecBotPos[3];
-	float fov = AimFOV[bot];
-	GetClientEyePosition(bot, vecBotPos);
+	float botPos[3];
+	float fov = TBot.fov;
+	GetClientEyePosition(bot, botPos);
 	int target = INVALID_ENT_REFERENCE;
 
-	BotTarget[bot] = INVALID_ENT_REFERENCE;
+	TBot.target = INVALID_ENT_REFERENCE;
 	//PrintToChatAll("fov: %.1f", fov);
 
-	float vecTargetPos[3], nearest;
-	float flClosestDistance = Range[bot] * 2.0; //only check for targets within double our preferred combat range
-	float vecVisiblePos[3];
+	float targetPos[3], nearest;
+	float closestDistance = TBot.range * 2.0; //only check for targets within double our preferred combat range
+	float visiblePos[3];
 
 	for (int i = 1; i <= MaxClients; i++)
 	{
@@ -4075,27 +3997,27 @@ stock int SelectBestTarget(int bot, float oAngles[3]) //Gets the closest visible
 		//if (IgnoreClient[i])
 			//continue;
 
-		GetClientEyePosition(i, vecVisiblePos);
-		vecVisiblePos[2] -= 40.0;
+		GetClientEyePosition(i, visiblePos);
+		visiblePos[2] -= 40.0;
 
-		nearest = GetFov(oAngles, CalcAngle(vecBotPos, vecVisiblePos));
+		nearest = GetFov(oAngles, CalcAngle(botPos, visiblePos));
 		if (nearest > fov)
 			continue;
 
-		float flDistance = GetVectorDistance(vecBotPos, vecVisiblePos);
+		float distance = GetVectorDistance(botPos, visiblePos);
 		//PrintToChatAll("fov difference: %.1f", FloatAbs(fov - nearest));
 		if (FloatAbs(fov - nearest) < 5.0)
 		{
 			//PrintToChatAll("Checking Distance");
-			if (flDistance < flClosestDistance)
+			if (distance < closestDistance)
 			{
 				//PrintToChatAll("Closest Target");
 				if (CheckTrace(bot, i))
 				{
 					//PrintToChatAll("Found Target is not closest target");
 					fov = nearest;
-					flClosestDistance = flDistance;
-					vecTargetPos = vecVisiblePos;
+					closestDistance = distance;
+					targetPos = visiblePos;
 					target = i;
 				}
 			}
@@ -4107,8 +4029,8 @@ stock int SelectBestTarget(int bot, float oAngles[3]) //Gets the closest visible
 			{
 				//PrintToChatAll("Found Target is closest target");
 				fov = nearest;
-				flClosestDistance = flDistance;
-				vecTargetPos = vecVisiblePos;
+				closestDistance = distance;
+				targetPos = visiblePos;
 				target = i;
 			}
 		}
@@ -4171,13 +4093,42 @@ stock bool IsValidTarget(int client, int target)
 		 || TF2_IsPlayerInCondition(target, TFCond_UberchargedCanteen) || TF2_IsPlayerInCondition(target, TFCond_Bonked)) {
 		return false;
 	}
-	if (TF2_IsPlayerInCondition(target, TFCond_Cloaked) || TF2_IsPlayerInCondition(target, TFCond_Disguised))
+	if (TF2_IsPlayerInCondition(target, TFCond_Cloaked))
 		return false;
 
+	if (TF2_IsPlayerInCondition(target, TFCond_Disguised))
+	{
+		if (Bot[client].proficiency < 2)
+			return false;
+
+		if (GetEntProp(target, Prop_Send, "m_iDisguiseTargetIndex") == client)
+			return true;
+
+		if (NearTeammates(target))
+			return true;
+	}
 	if (GetEntProp(target, Prop_Data, "m_takedamage") != 2)
 		return false;
 
 	return true;
+}
+
+bool NearTeammates(int client)
+{
+	int count;
+	float pos[3];
+	GetClientAbsOrigin(client, pos);
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (IsClientInGame(i) && GetClientTeam(i) == GetClientTeam(client) && i != client)
+		{
+			float playerpos[3];
+			GetClientAbsOrigin(i, playerpos);
+			if (GetVectorDistance(pos, playerpos) <= 300.0)
+				count++;
+		}
+	}
+	return (count > 2);
 }
 
 stock bool CheckTrace(int attacker, int victim)
@@ -4261,7 +4212,7 @@ bool CheckSniperShouldAim(int bot)
 	{
 		if (IsCustomBot(bot))
 		{
-			if (AimDelay[bot] <= GetEngineTime() && !TF2_IsPlayerInCondition(bot, TFCond_Slowed))
+			if (Bot[bot].aimDelay <= GetGameTime() && !TF2_IsPlayerInCondition(bot, TFCond_Slowed))
 				return true;
 		}
 	}
@@ -4500,8 +4451,9 @@ float GetPlayerMaxSpeed(int client, bool backwards = false)
 	return speed;
 }
 
-bool TargetInRange(int client, int target, bool flare = false, float distance = 0.0)
+bool TargetInRange(int client, TFBot bot, bool flare = false, float range = 0.0)
 {
+	int target = bot.target;
 	if (TargetIsValid(client, target) && IsCustomBot(client) && IsValidClient(client))
 	{
 		float pos[3], targpos[3];
@@ -4511,24 +4463,24 @@ bool TargetInRange(int client, int target, bool flare = false, float distance = 
 
 		if (CheckTrace(client, target))
 		{
-			float flDistance = GetVectorDistance(pos, targpos);
+			float distance = GetVectorDistance(pos, targpos);
 			if (flare)
 			{
 				//PrintCenterTextAll("Flare Override: %.1f\nCurrentDistance: %.1f", distance, flDistance);
-				if (flDistance >= distance)
+				if (distance >= range)
 					return true;
 				else
 					return false;
 			}
-			if (distance > 0.0)
+			if (range > 0.0)
 			{
 				//PrintCenterTextAll("Bot Pos: %.1f %.1f %.1f\nTarget Pos: %.1f %.1f %.1f\nRange: %.1f\nCurrent Distance: %.1f", pos[0], pos[1], pos[2], targpos[0], targpos[1], targpos[2], distance, flDistance);
-				if (flDistance <= distance)
+				if (distance <= range)
 					return true;
 				else
 					return false;
 			}
-			if (flDistance <= Range[client])
+			if (distance <= bot.range)
 			{
 				return true;
 			}
@@ -4556,9 +4508,9 @@ float GetBotAttackRange(int bot)
 {
 	if (IsValidClient(bot) && IsCustomBot(bot))
 	{
-		if (BotIndex[bot] > 0)
+		if (Bot[bot].index > 0)
 		{
-			float flRange;
+			float range;
 			KeyValues kv = new KeyValues("BotIndexes");
 
 			char sPath[PLATFORM_MAX_PATH];
@@ -4566,7 +4518,7 @@ float GetBotAttackRange(int bot)
 			kv.ImportFromFile(sPath);
 
 			char sBotIndex[8];
-			IntToString(BotIndex[bot], sBotIndex, sizeof sBotIndex);
+			IntToString(Bot[bot].index, sBotIndex, sizeof sBotIndex);
 
 			if (!kv.JumpToKey(sBotIndex))
 			{
@@ -4575,10 +4527,10 @@ float GetBotAttackRange(int bot)
 				return 0.0;
 			}
 
-			flRange = kv.GetFloat("range", 800.0);
+			range = kv.GetFloat("range", 800.0);
 
 			delete kv;
-			return flRange;
+			return range;
 		}
 	}
 	return 800.0;
@@ -4834,7 +4786,7 @@ bool IsCustomBot(int bot)
 {
 	if (IsFakeClient(bot))
 	{
-		if (BotIndex[bot] > 0 || bIsHookedBot[bot])
+		if (Bot[bot].index > 0 || bIsHookedBot[bot])
 			return true;
 	}
 
@@ -4849,10 +4801,4 @@ float[] ExtractVectorFromAddress(Address address)
 	v[1] = view_as<float>(ReadInt(address + Address(0x4)));
 	v[2] = view_as<float>(ReadInt(address + Address(0x8)));
 	return v;
-}
-
-void FormatVector(float vector[3], float formatted[3])
-{
-	for (int i = 0; i < 3; i++)
-		vector[i] = formatted[i];
 }
