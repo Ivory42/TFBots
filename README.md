@@ -2,6 +2,8 @@
 
 ## REQUIRES TF2Items and TF2Attributes!
 
+## 08/2022: Complete rewrite from the ground up is planned. This plugin is old and VERY hard to follow as it currently stands.
+
 TFBots aren't very interesting or engaging to fight, so I decided to revamp them and make them behave more like players.
 This is by no means perfect but the bots are able to behave a lot more like players than normally.
 
