@@ -1,0 +1,11 @@
+# Ignore everything
+
+*.exe
+*.json
+*.smx
+!/sourcemod/scripting
+/sourcemod/scripting/include/*
+!/sourcemod/scripting/include/custombots.inc
+!/sourcemod/scripting/include/tfbots
+!/sourcemod/scripting/tfbots
+
