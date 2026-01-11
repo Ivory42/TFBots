@@ -10,24 +10,44 @@ Action CMDSpawnBot(int client, int args)
 
 public void OnClientPutInServer(int clientId)
 {
-	ATFBot bot = FBotStatics.GetPlayerAsBot(clientId);
+	ACustomBot bot = FBotStatics.GetPlayerAsBot(clientId);
 	if (bot && ShouldBotHook)
 	{
-		//SDKHook(clientId, SDKHook_GetMaxHealth, BotSetMaxHealth);
-	}
-	if (IsFakeClient(clientId))
-	{
-		if (ShouldBotHook)
+		FBotData data;
+		data.Index = GetFreeBotIndex(ForcedIndex);
+		ForcedIndex = -1;
+		bot.SetBotData(data);
+
+		SDKHook(clientId, SDKHook_GetMaxHealth, BotSetMaxHealth);
+		if (data.Index)
 		{
-			ATFBot bot = 
-			SDKHook(client, SDKHook_GetMaxHealth, BotSetMaxHealth);
-			Bot[client].index = GetFreeBotIndex(ForcedIndex);
-			if (Bot[client].index)
-			{
-				CreateTimer(0.2, SetBotVars, client, TIMER_FLAG_NO_MAPCHANGE);
-			}
+			CreateTimer(0.2, SetBotVars, client, TIMER_FLAG_NO_MAPCHANGE);
 		}
-		//PrintToChatAll("index = %i", BotIndex[client]);
+
 		ShouldBotHook = false;
 	}
+}
+
+int GetFreeBotIndex(int force = 0)
+{
+	int index = 0;
+	if (force > 0)
+	{
+		index = force;
+	}
+	else // Pick a random bot index from our available list
+	{
+		int bots = AvailableBotList.Length - 1;
+		int selection = GetRandomInt(0, bots);
+		index = AvailableBotList.Get(selection);
+	}
+
+	// Remove this selected index from our available list.
+	int position = AvailableBotList.FindValue(index);
+	if (position != -1)
+	{
+		AvailableBotList.Erase(position);
+	}
+
+	return index;
 }

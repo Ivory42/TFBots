@@ -17,25 +17,25 @@ int OffsetStudioHdr;
 bool MapIsCP = false;
 bool ShouldBotHook = false; // If true, next spawned bot will have custom functionality
 
-int ForcedBotIndex; // If non-zero, will force the next spawned bot to use this index.
+int ForcedIndex; // If non-zero, will force the next spawned bot to use this index.
 
 ArrayList AvailableBotList; // List of available bot indices for random bot selections
-ArrayList CachedBotData; // List of all indexed bot configurations
+StringMap BotPrefabs; // Stringmap containing all cached bot prefabs
 
 #include "BotEvents.sp"
 #include "BotHandler.sp"
 
 public void OnPluginStart()
 {
-	Events_PluginStart();
+	Events_OnPluginStart();
 
 	//Debug commands
 	RegAdminCmd("sm_spawnbot", CMDSpawnBot, ADMFLAG_ROOT);
-	RegAdminCmd("sm_sethp", CMDSetHP, ADMFLAG_ROOT);
+	//RegAdminCmd("sm_sethp", CMDSetHP, ADMFLAG_ROOT);
 
 	//Nav editor
-	RegAdminCmd("sm_naveditor", CMDCreateNavPoint, ADMFLAG_ROOT);
-	RegAdminCmd("sm_reloadnodes", CMDReloadNodes, ADMFLAG_ROOT);
+	//RegAdminCmd("sm_naveditor", CMDCreateNavPoint, ADMFLAG_ROOT);
+	//RegAdminCmd("sm_reloadnodes", CMDReloadNodes, ADMFLAG_ROOT);
 
 	//Convars
 	SpawnBots = CreateConVar("tf_bot_allow_join", "1", "Can TFBots randomly join and leave the server");
@@ -98,15 +98,75 @@ public void OnMapStart()
 	// Check for 5cp
 	MapIsCP = FindControlPoints();
 
+	ReloadBotConfigurations();
+
+	CreateTimer(25.0, TimerCheckPlayers, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
+}
+
+void ReloadBotConfigurations()
+{
+	// Initialize our list of available bot indices
 	if (AvailableBotList)
 	{
 		delete AvailableBotList;
 	}
-
-	// Initialize our list of available bot indices
 	AvailableBotList = new ArrayList(32);
 
-	CreateTimer(25.0, TimerCheckPlayers, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
+	// Initialize prefabs
+	if (BotPrefabs)
+	{
+		delete BotPrefabs;
+	}
+	BotPrefabs = new StringMap();
+
+	// Pull prefabs from our config
+	KeyValues kv = new KeyValues("BotPrefabs");
+
+	char sPath[PLATFORM_MAX_PATH];
+	BuildPath(Path_SM, sPath, sizeof sPath, "configs/botprefabs.cfg");
+	kv.ImportFromFile(sPath);
+
+	int index = 1; // Start at 1
+	FBotData data;
+	kv.GotoFirstSubKey();
+	do
+	{
+		data.Index = index;
+		kv.GetSectionName(data.Name, sizeof FBotData::Name);
+		data.Class = view_as<TFClassType>(kv.GetNum("class", 1));
+		data.Offclass = view_as<TFClassType>(kv.GetNum("offclass"));
+		data.PriorityClass = view_as<TFClassType>(kv.GetNum("prioritize"));
+		data.Inaccuracy = kv.GetFloat("inaccuracy");
+		data.AimDelay = kv.GetFloat("aimdelay");
+		data.AimFOV = kv.GetFloat("aimfov", 90.0);
+		data.AggroDelay = kv.GetFloat("aggrotime", 10.0);
+		data.AttackRange = kv.GetFloat("range");
+		data.HealthThreshold = kv.GetFloat("health_threshold");
+		data.PreferMelee = view_as<bool>(kv.GetNum("melee"));
+		data.PreferJump = view_as<bool>(kv.GetNum("preferjump"));
+		data.Proficiency = kv.GetNum("proficiency", 3);
+
+		// Sniper
+		data.SniperAimTime = kv.GetFloat("aimtime", 1.5);
+		data.SniperConfidence = kv.GetNum("confidence_hs", 1);
+		data.PressureDistance = kv.GetFloat("pressure_distance", 400.0);
+
+		// Soldier
+		data.SoldierConfidence = kv.GetNum("confidence_rj", 1);
+		data.HeightThreshold = kv.GetFloat("height", 300.0);
+		data.AimGround = view_as<bool>(kv.GetNum("aimground"));
+
+		char key[32];
+		IntToString(index, key, sizeof key);
+		AvailableBotList.Push(index);
+		BotPrefabs.SetArray(key, data, sizeof FBotData);
+
+		index++;
+	}
+	while (kv.GotoNextKey());
+
+	delete kv;
+	return false;
 }
 
 Action TimerCheckPlayers(Handle timer)

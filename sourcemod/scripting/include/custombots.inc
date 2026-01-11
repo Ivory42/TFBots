@@ -4,6 +4,7 @@
 #define _custombots_included
 
 #include <objectmanager>
+#include <tf2_stocks>
 
 enum ENavType
 {
@@ -30,16 +31,70 @@ enum EParamType
 	CBParam_ClassPriority
 }
 
+enum struct FBotWeapon
+{
+	char Classname[128];
+	int DefIndex;
+	int Killstreak;
+	int Sheen;
+	int KSEffect;
+	int Effect;
+	bool Australium;
+}
+
+enum struct FBotCosmetic
+{
+	int DefIndex;
+	bool Unusual;
+	int Effect;
+	int Paint1;
+	int Paint2;
+}
+
 enum struct FBotData
 {
 	int Index;
 	char Name[64];
 
-	TFClassType Class;
-	TFClassType Offclass;
+	float Inaccuracy;			// How inaccurate our aim is
+	float AimDelay;				// Delay between correcting our aim
+	float AimFOV;				// We find aggro targets in this FOV
+	float AggroDelay;			// Delay between finding aggro targets
+	float AttackRange;			// We do not fire at targets outside this range
+	float HealthThreshold;		// When our health drops below this ratio, we try to flee
+	float PathFindRad;
+
+	int Proficiency;
+
+	bool PreferJump;
+	bool PreferMelee;
+
+	// Sniper variables
+	float SniperAimTime;
+	float PressureDistance;
+	int SniperConfidence;
+
+	// Soldier variables
+	float HeightThreshold;
+	float BlastJumpChance;
+	float BlastJumpProf;
+	int SoldierConfidence;
+	bool AimGround;
+
+	TFClassType Class; 			// Our main class
+	TFClassType Offclass;		// Our off class
+	TFClassType PriorityClass; 	// Prioritize enemies of this class type
+
+	FBotWeapon Primary;
+	FBotWeapon Secondary;
+	FBotWeapon Melee;
+
+	FBotCosmetic Cosmetic1;
+	FBotCosmetic Cosmetic2;
+	FBotCosmetic Cosmetic3;
 }
 
-methodmap ATFBot < AClient
+methodmap ACustomBot < AClient
 {
 	property bool HookedBot
 	{
@@ -83,6 +138,18 @@ methodmap ATFBot < AClient
 		public set(bool value) { this.SetObjectProp("TFBot.ShouldBeCrouching", value); }
 	}
 
+	property bool Fleeing
+	{
+		public get() { return this.GetObjectProp("TFBot.BotIsFleeing"); }
+		public set(bool value) { this.SetObjectProp("TFBot.BotIsFleeing", value); }
+	}
+
+	property bool Attacking
+	{
+		public get() { return this.GetObjectProp("TFBot.BotIsAttacking"); }
+		public set(bool value) { this.SetObjectProp("TFBot.BotIsAttacking", value); }
+	}
+
 	property bool InCaptureArea
 	{
 		public get() { return this.GetObjectProp("TFBot.InCaptureArea"); }
@@ -95,13 +162,19 @@ methodmap ATFBot < AClient
 		public set(bool value) { this.SetObjectProp("TFBot.ScoutUseSingleJump", value); }
 	}
 
-	property float DoubleJumpTimer
+	property float NextAggroTime
+	{
+		public get() { return this.GetObjectPropFloat("TFBot.AggroTime"); }
+		public set(float value) { this.SetObjectPropFloat("TFBot.AggroTime", value); }
+	}
+
+	property float NextDoubleJumpTime
 	{
 		public get() { return this.GetObjectPropFloat("TFBot.DoubleJumpTimer"); }
 		public set(float value) { this.SetObjectPropFloat("TFBot.DoubleJumpTimer", value); }
 	}
 
-	property float JumpTimer
+	property float NextJumpTime
 	{
 		public get() { return this.GetObjectPropFloat("TFBot.SingleJumpTimer"); }
 		public set(float value) { this.SetObjectPropFloat("TFBot.SingleJumpTimer", value); }
@@ -161,6 +234,24 @@ methodmap ATFBot < AClient
 		public set(float value) { this.SetObjectPropFloat("TFBot.CrouchTime", value); }
 	}
 
+	property float NextAimTime
+	{
+		public get() { return this.GetObjectPropFloat("TFBot.NextAutoAimTime"); }
+		public set(float value) { this.SetObjectPropFloat("TFBot.NextAutoAimTime", value); }
+	}
+
+	public float GetAttackRange() { return this.GetBotData().AttackRange; }
+	public float GetAggroDelay() { return this.GetBotData().AggroDelay; }
+	public float GetAimFOV() { return this.GetBotData().AimFOV; }
+	public float GetInaccuracy() { return this.GetBotData().Inaccuracy; }
+	public float GetAimDelay() { return this.GetBotData().AimDelay; }
+
+	public TFClassType GetBotClass() { return this.GetBotData().Class; }
+	public TFClassType GetOffclass() { return this.GetBotData().Offclass; }
+
+	public void SetCurrentTarget(FObject target) { this.SetObjectPropEnt("TFBot.CurrentAggroTarget", target); }
+	public FObject GetCurrentTarget() { return this.GetObjectPropEnt("TFBot.CurrentAggroTarget"); }
+
 	public void SetShield(FObject shield) { this.SetObjectPropEnt("TFBot.CurrentShieldReference", shield); }
 	public FObject GetShield() { return this.GetObjectPropEnt("TFBot.CurrentShieldReference"); }
 
@@ -173,7 +264,7 @@ methodmap ATFBot < AClient
 		return data;
 	}
 
-	public void SetPreservedAmmo(int ammo, TFWeaponSlot slot)
+	public void SetPreservedAmmo(int ammo, int slot)
 	{
 		int ammoset[2];
 		this.GetArray("TFBot.PreservedAmmoArray", ammoset, 2);
@@ -181,7 +272,7 @@ methodmap ATFBot < AClient
 
 		this.SetArray("TFBot.PreservedAmmoArray", ammoset);
 	}
-	public int GetPreservedAmmo(TFWeaponSlot slot)
+	public int GetPreservedAmmo(int slot)
 	{
 		int ammoset[2];
 		this.GetArray("TFBot.PreservedAmmoArray", ammoset, 2);
@@ -189,7 +280,7 @@ methodmap ATFBot < AClient
 		return ammoset[slot];
 	}
 
-	public void SetPreservedClip(int ammo, TFWeaponSlot slot)
+	public void SetPreservedClip(int ammo, int slot)
 	{
 		int ammoset[2];
 		this.GetArray("TFBot.PreservedClipArray", ammoset, 2);
@@ -197,7 +288,7 @@ methodmap ATFBot < AClient
 
 		this.SetArray("TFBot.PreservedAmmoArray", ammoset);
 	}
-	public int GetPreservedClip(TFWeaponSlot slot)
+	public int GetPreservedClip(int slot)
 	{
 		int ammoset[2];
 		this.GetArray("TFBot.PreservedClipArray", ammoset, 2);
@@ -206,7 +297,7 @@ methodmap ATFBot < AClient
 	}
 }
 
-methodmap ASoldier < ATFBot
+methodmap ASoldier < ACustomBot
 {
 	property float BlastJumpForwardDelay
 	{
@@ -254,12 +345,12 @@ methodmap FBotStatics
 	 * Temporarily override a parameter for the given bot
 	 * This will be reset to the config value upon the bot respawning
 	 *
-	 * @param bot		Client index of the bot
+	 * @param bot		Handle wrapping the bot
 	 * @param value		Value to set
 	 * @param param		Parameter to override
 	 *
 	 */
-	public native void OverrideParameter(ACBot bot, any value, EParamType param);
+	public native void OverrideParameter(ACustomBot bot, any value, EParamType param);
 
 	/**
 	 * Spawn a bot by name
@@ -267,22 +358,22 @@ methodmap FBotStatics
 	 * @param name	Name of the bot
 	 * @param team	Team to spawn on
 	 *
-	 * @return ACBot handle wrapping this bot
+	 * @return ACustomBot handle wrapping this bot
 	 */
-	public native ACBot SpawnBotByName(const char[] name, TFTeam team);
+	public native ACustomBot SpawnBotByName(const char[] name, TFTeam team);
 
 	/**
 	 * Returns a handle wrapping this client if the client is a bot
 	 * 
 	 * @param clientId	Client index
 	 * 
-	 * @return ATFBot handle if the client is a bot. If the client is not a bot, returns null.
+	 * @return ACustomBot handle if the client is a bot. If the client is not a bot, returns null.
 	 */
-	public static ATFBot GetPlayerAsBot(int clientId)
+	public static ACustomBot GetPlayerAsBot(int clientId)
 	{
 		if (IsFakeClient(clientId))
 		{
-			ATFBot bot = view_as<ATFBot>(FEntityStatics.GetClientFromIndex(clientId));
+			ACustomBot bot = view_as<ACustomBot>(FEntityStatics.GetClientFromIndex(clientId));
 			return bot;
 		}
 		else
@@ -320,7 +411,7 @@ native void CB_HookBot(int bot);
  * @param2 param - Bot Parameter to set
  */
 
-native void CB_SetBotParameterFloat(int bot, float value, CBParamType param);
+native void CB_SetBotParameterFloat(int bot, float value, EParamType param);
 
 /**
  * Set a hooked bot's parameter value as an integer
@@ -330,7 +421,7 @@ native void CB_SetBotParameterFloat(int bot, float value, CBParamType param);
  * @param2 param - Bot Parameter to set
  */
 
-native void CB_SetBotParameterInt(int bot, int value, CBParamType param);
+native void CB_SetBotParameterInt(int bot, int value, EParamType param);
 
 /**
  * Set a hooked bot's parameter value as a bool
@@ -340,7 +431,7 @@ native void CB_SetBotParameterInt(int bot, int value, CBParamType param);
  * @param2 param - Bot Parameter to set
  */
 
-native void CB_SetBotParameterBool(int bot, bool value, CBParamType param);
+native void CB_SetBotParameterBool(int bot, bool value, EParamType param);
 
 /**
  * Check if client is a custom bot
