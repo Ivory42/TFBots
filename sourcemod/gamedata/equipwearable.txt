@@ -1,0 +1,30 @@
+"Games"
+{
+    "tf"
+    {
+        "Offsets"
+        {
+			"RemoveAllItems"
+			{
+				"windows"	"354"
+				"windows64"	"354"
+				"linux"		"355"
+				"linux64"	"355"
+			}
+			"EquipWearable"
+			{
+				"windows"	"439"
+				"windows64"	"439"
+				"linux"		"440"
+				"linux64"	"440"
+			}
+			"RemoveWearable"
+			{
+				"windows"	"440"
+				"windows64"	"440"
+				"linux"		"441"
+				"linux64"	"441"
+			}
+        }
+    }
+}

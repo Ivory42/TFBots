@@ -4,7 +4,9 @@
 #define _custombots_included
 
 #include <objectmanager>
+#include <ilib_objects>
 #include <tf2_stocks>
+#include <tf2items>
 
 enum ENavType
 {
@@ -33,6 +35,7 @@ enum EParamType
 
 enum struct FBotWeapon
 {
+	bool Enabled; // If this weapon is enabled. Disabled weapons will not be equipped
 	char Classname[128];
 	int DefIndex;
 	int Killstreak;
@@ -40,9 +43,10 @@ enum struct FBotWeapon
 	int KSEffect;
 	int Effect;
 	bool Australium;
+	bool Wearable; // shields/backpacks/etc
 }
 
-enum struct FBotCosmetic
+enum struct FBotWearable
 {
 	int DefIndex;
 	bool Unusual;
@@ -51,10 +55,24 @@ enum struct FBotCosmetic
 	int Paint2;
 }
 
+enum struct FBotLoadout
+{
+	TFClassType Class; // Class this is for
+	TFTeam Team; // Team this loadout is used on
+
+	FBotWeapon Primary;
+	FBotWeapon Secondary;
+	FBotWeapon Melee;
+	FBotWeapon Building; // Spy watch
+
+	ArrayList Wearables;
+}
+
 enum struct FBotData
 {
 	int Index;
 	char Name[64];
+	char Config[64];
 
 	float Inaccuracy;			// How inaccurate our aim is
 	float AimDelay;				// Delay between correcting our aim
@@ -85,13 +103,18 @@ enum struct FBotData
 	TFClassType Offclass;		// Our off class
 	TFClassType PriorityClass; 	// Prioritize enemies of this class type
 
-	FBotWeapon Primary;
-	FBotWeapon Secondary;
-	FBotWeapon Melee;
+	ArrayList Loadouts;
+}
 
-	FBotCosmetic Cosmetic1;
-	FBotCosmetic Cosmetic2;
-	FBotCosmetic Cosmetic3;
+// Initializes a bot data structure with proper defaults
+FBotData CreateBotData()
+{
+	FBotData data;
+	data.Index = -1;
+	data.PathFindRad = 30.0;
+	data.Class = TFClass_Scout;
+
+	return data;
 }
 
 methodmap ACustomBot < AClient
@@ -189,7 +212,7 @@ methodmap ACustomBot < AClient
 	property float AmmoPreserveDelay
 	{
 		public get() { return this.GetObjectPropFloat("TFBot.AmmoPreservationDelay"); }
-		public set(float value) { this.SetObjectPropFloat("TFBot.AmmoPreservationDelay". value); }
+		public set(float value) { this.SetObjectPropFloat("TFBot.AmmoPreservationDelay", value); }
 	}
 
 	property float KeepAmmoDuration
@@ -240,6 +263,13 @@ methodmap ACustomBot < AClient
 		public set(float value) { this.SetObjectPropFloat("TFBot.NextAutoAimTime", value); }
 	}
 
+	// This will always override m_iDesiredClassIndex
+	property TFClassType DesiredClass
+	{
+		public get() { return this.GetObjectProp("TFBot.CurrentDesiredClass"); }
+		public set(TFClassType class) { this.SetObjectProp("TFBot.CurrentDesiredClass", class); }
+	}
+
 	public float GetAttackRange() { return this.GetBotData().AttackRange; }
 	public float GetAggroDelay() { return this.GetBotData().AggroDelay; }
 	public float GetAimFOV() { return this.GetBotData().AimFOV; }
@@ -270,7 +300,7 @@ methodmap ACustomBot < AClient
 		this.GetArray("TFBot.PreservedAmmoArray", ammoset, 2);
 		ammoset[slot] = ammo;
 
-		this.SetArray("TFBot.PreservedAmmoArray", ammoset);
+		this.SetArray("TFBot.PreservedAmmoArray", ammoset, 2);
 	}
 	public int GetPreservedAmmo(int slot)
 	{
@@ -286,7 +316,7 @@ methodmap ACustomBot < AClient
 		this.GetArray("TFBot.PreservedClipArray", ammoset, 2);
 		ammoset[slot] = ammo;
 
-		this.SetArray("TFBot.PreservedAmmoArray", ammoset);
+		this.SetArray("TFBot.PreservedAmmoArray", ammoset, 2);
 	}
 	public int GetPreservedClip(int slot)
 	{
@@ -374,12 +404,13 @@ methodmap FBotStatics
 		if (IsFakeClient(clientId))
 		{
 			ACustomBot bot = view_as<ACustomBot>(FEntityStatics.GetClientFromIndex(clientId));
-			return bot;
+			if (bot && bot.HookedBot)
+			{
+				return bot;
+			}
 		}
-		else
-		{
-			return null;
-		}
+
+		return null;
 	}
 }
 
