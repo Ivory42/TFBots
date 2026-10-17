@@ -2,8 +2,7 @@
 
 ## REQUIRES TF2Items and TF2Attributes!
 
-## 10/2022: Complete rewrite from the ground up is planned. This plugin is old and VERY hard to follow as it currently stands.
-## 11/2024: This plugin currently has high chances of causing frequent errors and server stutters. These issues will be fixed with the rewrite.
+## 10/2026 - Basic loadout configurations for bots has been implemented. Logic is currently not re-implemented and this branch still utilizes default bot behavior.
 
 TFBots aren't very interesting or engaging to fight, so I decided to revamp them and make them behave more like players.
 This is by no means perfect but the bots are able to behave a lot more like players than normally.
@@ -16,7 +15,7 @@ This is by no means perfect but the bots are able to behave a lot more like play
 - `sm_naveditor` - Opens the navigation editor
 - `sm_reloadnodes` - Reloads all current navigation nodes
 
-#### Features
+#### Features (All behavior related features are currently not implemented in this branch, but will be re-implemented again in the future)
 
  - Bots will constantly try to avoid obstacles obstructing their path if possible
  - Bots stutter step while in combat
@@ -26,10 +25,8 @@ This is by no means perfect but the bots are able to behave a lot more like play
     - Bots are much less likely to get stuck at the wrong point
  
  - Configurable, individual bots
-    - Define your own bots in `configs/botindexes.txt` (example bot provided!)
+    - Define your own bots in `configs/custombots/prefabs` (example bot provided!)
     - Define custom logic in sub-plugins to extend specific bot behaviors.
-    - Up to 56 individual bots supported.
-        - Can add as many presets as you want, but any indexes above 56 must be spawned manually or through other plugins
         
     - Scouts can be configured to prefer to jump while in combat
     - Soldiers can be configured to rocket jump towards targets and attempt to bomb them
@@ -46,7 +43,7 @@ This is by no means perfect but the bots are able to behave a lot more like play
     - Snipers will stutter step after taking shots
     - Snipers can be configured to have different steady rates, so some can shoot quicker than others
     
-## Navigation Editor
+## Navigation Editor (Currently not implemented in this branch)
 
 Included in this plugin is a way to give bots (mostly soldiers) more customization depending on the current map. The navigation editor menu can be opened with `sm_naveditor`.
 
@@ -71,7 +68,7 @@ Fallback nodes are primarily used for 5CP maps, and thus cannot be accessed on a
  - Configurable radius
  - Configurable team association
 
-## Developers
+## Developers (Natives/Forwards are currently non-functional in this branch and are not bound to any functionality)
 There are multiple native functions and forwards that can be used to modify bots with their own plugins.
 
 Check `scripting/include/custombots.inc` for a more detailed explanation of each function.
@@ -96,14 +93,4 @@ Requries Sourcemod 1.11+ to compile
 - `CB_OnBotAdded` - Called when a bot joins with a predefined logic plugin - used for determining parameters in sub-plugins
 
 ## KNOWN ISSUES
-- Sniper bots don't always respect their steady rate parameters
-- Sniper bots will sometimes shoot targets they should not be able to see
-- If a spy bot is present, may cause significant stutters from disguise errors. (Wont fix until rewrite)
-
-## FUTURE PLANS
-
-- Give rocket jump nodes difficulty ratings so soldier bots can have different rocket jump skill values
-- Allow Demoman bots to sticky jump
-- Give scouts a bit of a better system for jumping (allow them to detect incoming projectiles and properly dodge in time)
-- Allow bots to prioritize specific classes
-- Allow medics to prioritize heal targets
+- Bots have no custom behavior, rewrite is in progress and functionality will slowly be re-introduced
