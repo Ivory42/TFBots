@@ -1,6 +1,7 @@
 # Custom TF2 Bot Logic
 
 ## REQUIRES TF2Items and TF2Attributes!
+## REQUIRES ObjectManager https://github.com/Ivory42/ObjectManager
 
 ## 10/2026 - Basic loadout configurations for bots has been implemented. Logic is slowly being re-implemented. Scouts are mostly back to where they were before, other classes will eventually follow suit.
 
