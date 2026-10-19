@@ -73,6 +73,7 @@ enum struct FBotData
 	int Index;
 	char Name[64];
 	char Config[64];
+	bool ForceSpawned;
 
 	float Inaccuracy;			// How inaccurate our aim is
 	float AimDelay;				// Delay between correcting our aim
@@ -106,13 +107,38 @@ enum struct FBotData
 	ArrayList Loadouts;
 }
 
+enum struct FBotLogicInfo
+{
+	FObject Primary;
+	FObject Secondary;
+	FObject Melee;
+	FObject ActiveWeapon;
+
+	int PrimaryIndex;
+	int SecondaryIndex;
+	int MeleeIndex;
+	int ActiveIndex;
+}
+
+stock FBotLogicInfo InitializeBotLogicInfo()
+{
+	FBotLogicInfo info;
+	info.PrimaryIndex = -1;
+	info.SecondaryIndex = -1;
+	info.MeleeIndex = -1;
+	info.ActiveIndex = -1;
+
+	return info;
+}
+
 // Initializes a bot data structure with proper defaults
-FBotData CreateBotData()
+stock FBotData CreateBotData()
 {
 	FBotData data;
 	data.Index = -1;
 	data.PathFindRad = 30.0;
 	data.Class = TFClass_Scout;
+	data.ForceSpawned = false;
 
 	return data;
 }
@@ -123,6 +149,17 @@ methodmap ACustomBot < AClient
 	{
 		public get() { return this.GetObjectProp("TFBot.IsHookedBot"); }
 		public set(bool value) { this.SetObjectProp("TFBot.IsHookedBot", value); }
+	}
+
+	property bool ForceSpawned
+	{
+		public get() { return this.GetBotData().ForceSpawned; }
+	}
+
+	property int MaxHealth
+	{
+		public get() { return this.GetObjectProp("TFBot.CurrentMaxHealth"); }
+		public set(int value) { this.SetObjectProp("TFBot.CurrentMaxHealth", value); }
 	}
 
 	property int JumpDelayCount
@@ -191,18 +228,6 @@ methodmap ACustomBot < AClient
 		public set(float value) { this.SetObjectPropFloat("TFBot.AggroTime", value); }
 	}
 
-	property float NextDoubleJumpTime
-	{
-		public get() { return this.GetObjectPropFloat("TFBot.DoubleJumpTimer"); }
-		public set(float value) { this.SetObjectPropFloat("TFBot.DoubleJumpTimer", value); }
-	}
-
-	property float NextJumpTime
-	{
-		public get() { return this.GetObjectPropFloat("TFBot.SingleJumpTimer"); }
-		public set(float value) { this.SetObjectPropFloat("TFBot.SingleJumpTimer", value); }
-	}
-
 	property float KeepPrimaryDelay
 	{
 		public get() { return this.GetObjectPropFloat("TFBot.KeepPrimaryDelay"); }
@@ -213,12 +238,6 @@ methodmap ACustomBot < AClient
 	{
 		public get() { return this.GetObjectPropFloat("TFBot.AmmoPreservationDelay"); }
 		public set(float value) { this.SetObjectPropFloat("TFBot.AmmoPreservationDelay", value); }
-	}
-
-	property float KeepAmmoDuration
-	{
-		public get() { return this.GetObjectPropFloat("TFBot.KeepAmmoDuration"); }
-		public set(float value) { this.SetObjectPropFloat("TFBot.KeepAmmoDuration", value); }
 	}
 
 	property float DamageDelay
@@ -243,6 +262,12 @@ methodmap ACustomBot < AClient
 	{
 		public get() { return this.GetObjectPropFloat("TFBot.CallMedicDelay"); }
 		public set(float value) { this.SetObjectPropFloat("TFBot.CallMedicDelay", value); }
+	}
+
+	property float NavDelayTimeout
+	{
+		public get() { return this.GetObjectPropFloat("TFBot.NavigationTimeout"); }
+		public set(float value) { this.SetObjectPropFloat("TFBot.NavigationTimeout", value); }
 	}
 
 	property float CrouchDelay
@@ -275,9 +300,10 @@ methodmap ACustomBot < AClient
 	public float GetAimFOV() { return this.GetBotData().AimFOV; }
 	public float GetInaccuracy() { return this.GetBotData().Inaccuracy; }
 	public float GetAimDelay() { return this.GetBotData().AimDelay; }
+	public int GetProficiency() { return this.GetBotData().Proficiency; }
 
 	public TFClassType GetBotClass() { return this.GetBotData().Class; }
-	public TFClassType GetOffclass() { return this.GetBotData().Offclass; }
+	public TFClassType GetOffClass() { return this.GetBotData().Offclass; }
 
 	public void SetCurrentTarget(FObject target) { this.SetObjectPropEnt("TFBot.CurrentAggroTarget", target); }
 	public FObject GetCurrentTarget() { return this.GetObjectPropEnt("TFBot.CurrentAggroTarget"); }

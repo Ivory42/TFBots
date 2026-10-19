@@ -2,7 +2,7 @@
 
 ## REQUIRES TF2Items and TF2Attributes!
 
-## 10/2026 - Basic loadout configurations for bots has been implemented. Logic is currently not re-implemented and this branch still utilizes default bot behavior.
+## 10/2026 - Basic loadout configurations for bots has been implemented. Logic is slowly being re-implemented. Scouts are mostly back to where they were before, other classes will eventually follow suit.
 
 TFBots aren't very interesting or engaging to fight, so I decided to revamp them and make them behave more like players.
 This is by no means perfect but the bots are able to behave a lot more like players than normally.
@@ -15,7 +15,7 @@ This is by no means perfect but the bots are able to behave a lot more like play
 - `sm_naveditor` - Opens the navigation editor
 - `sm_reloadnodes` - Reloads all current navigation nodes
 
-#### Features (All behavior related features are currently not implemented in this branch, but will be re-implemented again in the future)
+#### Features (Most behavior related features are currently not implemented in this branch, but will be re-implemented again in the future)
 
  - Bots will constantly try to avoid obstacles obstructing their path if possible
  - Bots stutter step while in combat
@@ -93,4 +93,4 @@ Requries Sourcemod 1.11+ to compile
 - `CB_OnBotAdded` - Called when a bot joins with a predefined logic plugin - used for determining parameters in sub-plugins
 
 ## KNOWN ISSUES
-- Bots have no custom behavior, rewrite is in progress and functionality will slowly be re-introduced
+- Bots other than scouts have no significant custom behavior, rewrite is in progress and functionality will slowly be re-introduced

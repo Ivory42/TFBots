@@ -2,7 +2,9 @@
 #include <sdktools>
 #include <custombots>
 
-#define PLUGIN_VERSION  "0.0.1"
+#pragma semicolon 1
+
+#define PLUGIN_VERSION  "0.0.2"
 
 Handle GetBonePosition;
 Handle EquipWearable;
@@ -14,7 +16,7 @@ ConVar BotQuota;
 
 int OffsetStudioHdr;
 
-//bool MapIsCP = false;
+bool MapIsCP = false;
 bool ShouldBotHook = false; // If true, next spawned bot will have custom functionality
 
 FBotData ForceBot; // If a valid data set, will force the next spawned bot to use this data
@@ -22,7 +24,10 @@ FBotData ForceBot; // If a valid data set, will force the next spawned bot to us
 ArrayList AvailableBotList; // List of available bot indices for random bot selections
 StringMap BotPrefabs; // Stringmap containing all cached bot prefabs
 
-#include "BotHandler.sp"
+int Captures = 0;
+
+#include "custombots/bothandler.sp"
+#include "custombots/botlogic.sp"
 
 public void OnPluginStart()
 {
@@ -92,7 +97,9 @@ public void OnPluginStart()
 public void OnMapStart()
 {
 	// Check for 5cp
-	//MapIsCP = FindControlPoints();
+	MapIsCP = FindControlPoints();
+
+	Captures = 0;
 
 	ReloadBotConfigurations();
 	ForceBot = CreateBotData();
@@ -335,6 +342,7 @@ Action CMDSpawnBot(int client, int args)
 		if (data.Index != -1)
 		{
 			ForceBot = data;
+			ForceBot.ForceSpawned = true;
 		}
 		else
 		{
@@ -490,6 +498,11 @@ public void EntManager_OnClientRegistered(AClient client)
 
 Action BotSetMaxHealth(int botId, int& health)
 {
+	ACustomBot bot = FBotStatics.GetPlayerAsBot(botId);
+	if (bot)
+	{
+		bot.MaxHealth = health;
+	}
 	return Plugin_Continue;
 }
 
@@ -849,4 +862,97 @@ bool SpawnBotWearable(ACustomBot bot, int itemindex, int quality = 6, int level 
 	}
 
 	return false;
+}
+
+float GetPlayerMaxSpeed(AClient client, bool backwards = false)
+{
+	float speed = 400.0;
+	if (backwards) //backwards speed is ~90% of forward speed
+	{
+		speed = client.GetPropFloat(Prop_Data, "m_flMaxspeed") * 0.9;
+	}
+	else
+	{
+		speed = client.GetPropFloat(Prop_Data, "m_flMaxspeed");
+	}
+
+	return speed;
+}
+
+int GetHealth(AClient client)
+{
+	return client.GetProp(Prop_Send, "m_iHealth");
+}
+
+bool BotHasShield(ACustomBot bot)
+{
+	int entity = -1;
+	while ((entity = FindEntityByClassname(entity, "tf_wearable_razorback")) != -1)
+	{
+		if (GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity") == bot.Get() && !GetEntProp(entity, Prop_Send, "m_bDisguiseWearable"))
+		{
+			bot.SetShield(ConstructObject(entity));
+			return true;
+		}
+	}
+	entity = -1;
+	while ((entity = FindEntityByClassname(entity, "tf_wearable_demoshield")) != -1)
+	{
+		if (GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity") == bot.Get() && !GetEntProp(entity, Prop_Send, "m_bDisguiseWearable"))
+		{
+			bot.SetShield(ConstructObject(entity));
+			return true;
+		}
+	}
+	return false;
+}
+
+bool FindControlPoints()
+{
+	int ent = -1;
+	int count = 0;
+	while ((ent = FindEntityByClassname(ent, "team_control_point")) != -1)
+	{
+		count++;
+	}
+	if (count >= 5)
+		return true;
+
+	return false;
+}
+
+bool IsControlPoints()
+{
+	char mapname[64];
+	GetCurrentMap(mapname, sizeof mapname);
+
+	if (StrContains(mapname, "cp_") != -1 && MapIsCP)
+		return true;
+
+	return false;
+}
+
+void PrintBotDebug(AClient bot, bool center, const char[] text, any ...)
+{
+	ArrayList clients = FEntityStatics.GetConnectedClients();
+	for (int i = 0; i < clients.Length; i++)
+	{
+		AClient client = clients.Get(i);
+		if (client && !IsFakeClient(client.Get()))
+		{
+			if (client.GetPropEnt(Prop_Send, "m_hObserverTarget").Get() == bot.Get() && !client.Alive())
+			{
+				char message[256];
+				VFormat(message, sizeof message, text, 4);
+				if (center)
+				{
+					PrintCenterText(client.Get(), message);
+				}
+				else
+				{
+					PrintToChat(client.Get(), message);
+				}
+			}
+		}
+	}
 }

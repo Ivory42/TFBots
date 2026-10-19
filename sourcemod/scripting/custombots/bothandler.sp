@@ -5,7 +5,7 @@ void BotHandler_OnPluginStart()
 	//HookEvent("player_death", PlayerDeath, EventHookMode_Post);
 	HookEvent("post_inventory_application", PlayerResupply);
 	//HookEvent("player_hurt", PlayerHurt, EventHookMode_Pre);
-	//HookEvent("player_disconnect", OnPlayerDisconnect, EventHookMode_Pre);
+	HookEvent("player_disconnect", OnPlayerDisconnect, EventHookMode_Pre);
 	HookEvent("player_connect_client", OnPlayerConnect, EventHookMode_Pre);
 	//HookEvent("player_changename", OnNameChange, EventHookMode_Pre);
 	HookEvent("player_team", OnPlayerJoinTeam, EventHookMode_Pre);
@@ -136,6 +136,24 @@ Action OnPlayerConnect(Event event, const char[] name, bool dontBroadcast)
 	return Plugin_Continue;
 }
 
+Action OnPlayerDisconnect(Event event, const char[] name, bool dontBroadcast)
+{
+
+	ACustomBot bot = FBotStatics.GetPlayerAsBot(GetClientOfUserId(event.GetInt("userid")));
+	if (bot)
+	{
+		//event.BroadcastDisabled = true;
+		//PrintToChatAll("%s left the game (%s)", bot.GetBotData().Name, BotDisconnectMessage);
+
+		// Add this bot's index back to the available bot list if it was not spawned manually
+		if (AvailableBotList && !bot.ForceSpawned)
+		{
+			AvailableBotList.Push(bot.GetBotData().Index);
+		}
+	}
+	return Plugin_Continue;
+}
+
 Action OnPlayerJoinTeam(Event event, const char[] name, bool dontBroadcast)
 {
 	ACustomBot bot = FBotStatics.GetPlayerAsBot(GetClientOfUserId(event.GetInt("userid")));
@@ -155,7 +173,28 @@ void OnPlayerSpawn(Event event, const char[] name, bool dbroad)
 	{
 		if (bot.GetBotData().Index != -1)
 		{
-			// TF2_SetPlayerClass(bot.Get(), bot.DesiredClass);
+			// Our bot can determine what class to play here
+			// For now it will be strictly chance based, but in the future there will be support for dynamic class decisions
+			if (GetRandomInt(1, 100) <= 35)
+			{
+				bot.DesiredClass = bot.GetOffClass();
+			}
+			else
+			{
+				bot.DesiredClass = bot.GetBotClass();
+			}
+
+			if (bot.DesiredClass == TFClass_Medic)
+			{
+				// Medics will off class if there are too few players on the team
+				if (GetTeamClientCount(bot.Team) < 4)
+				{
+					bot.DesiredClass = bot.GetOffClass();
+				}
+			}
+
+			// Initialize timers
+			bot.SetTimer("TFBot.NextJumpDecisionTimer", ConstructTimer(0.1, false, false, true));
 		}
 	}
 }
@@ -192,4 +231,25 @@ Action UserMessage_SayText2(UserMsg msg_id, Handle bf, const int[] players, int 
 	}
 
 	return Plugin_Continue;
+}
+
+void ForceBotMovement(bool forwards, bool backwards, bool right, bool left, FVector velocity, float maxspeed)
+{
+	if (forwards)
+	{
+		velocity.X = maxspeed;
+	}
+	else if (backwards)
+	{
+		velocity.X = -maxspeed;
+	}
+
+	if (right)
+	{
+		velocity.Y = maxspeed;
+	}
+	else if (left)
+	{
+		velocity.Y = -maxspeed;
+	}
 }
